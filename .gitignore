@@ -1,4 +1,5 @@
 frontend/.env
 backend/.env
 database/.env
+database/data
 .idea
