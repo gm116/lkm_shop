@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Интернет-магазин ЛКМ",
+  "name": "Интернет-магазин лакокрасочных материалов",
   "icons": [
     {
       "src": "favicon.ico",
