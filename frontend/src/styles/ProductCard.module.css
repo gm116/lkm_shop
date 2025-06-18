@@ -1,0 +1,123 @@
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 10px 0 rgba(34, 108, 245, 0.03);
+    display: flex;
+    flex-direction: column;
+    /*padding: 0px 0px 15px 0px;*/
+    min-width: 0;
+    min-height: 300px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: box-shadow 0.16s;
+}
+
+.cardImg {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background: #f3f6fa;
+    display: block;
+    cursor: pointer;
+    transition: filter 0.15s;
+}
+
+.cardImg:hover {
+    filter: brightness(0.93);
+}
+
+.cardName {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 7px;
+    padding: 5px;
+    color: #1a1b1c;
+    line-height: 1.2;
+    transition: color 0.1s;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.cardName:hover {
+    color: #226cf5;
+}
+
+.cardPrice {
+    font-size: 19px;
+    padding: 5px;
+    font-weight: 700;
+    color: #24a244;
+    margin-bottom: 14px;
+}
+
+.ruble {
+    font-size: 17px;
+    font-weight: 500;
+}
+
+.actionArea {
+    padding: 8px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: auto;
+}
+
+.cartBtn {
+    background: #226cf5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 0;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.13s;
+}
+
+.cartBtn:hover {
+    background: #1853c3;
+}
+
+.countBlock {
+    display: flex;
+    align-items: center;
+    background: #f2f5fc;
+    border-radius: 6px;
+    width: 100%;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+.countBtn {
+    background: #e5edfa;
+    border: none;
+    border-radius: 6px;
+    font-size: 19px;
+    width: 36px;
+    height: 36px;
+    font-weight: 600;
+    color: #226cf5;
+    cursor: pointer;
+    transition: background 0.05s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.countBtn:hover {
+    background: #d2e0f8;
+}
+
+.countNum {
+    font-size: 17px;
+    font-weight: 700;
+    color: #222;
+    min-width: 28px;
+    text-align: center;
+    user-select: none;
+}
