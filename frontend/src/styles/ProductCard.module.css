@@ -32,7 +32,7 @@
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 7px;
-    padding: 5px;
+    padding: 0 0 0 10px;
     color: #1a1b1c;
     line-height: 1.2;
     transition: color 0.1s;
@@ -46,7 +46,7 @@
 
 .cardPrice {
     font-size: 19px;
-    padding: 5px;
+    padding: 0 0 0 10px;
     font-weight: 700;
     color: #24a244;
     margin-bottom: 14px;

@@ -1,5 +1,5 @@
-import { useParams } from 'react-router-dom';
-import { useCart } from '../store/cartContext';
+import {useParams} from 'react-router-dom';
+import {useCart} from '../store/cartContext';
 import styles from '../styles/ProductPage.module.css';
 
 const products = [
@@ -46,27 +46,52 @@ const products = [
 ];
 
 export default function ProductPage() {
-    const { id } = useParams();
-    const { addToCart } = useCart();
-    const product = products.find(p => p.id === Number(id));
+    const {id} = useParams();
+    const {cart, addToCart, removeFromCart} = useCart();
+    const product = products.find(p => String(p.id) === id);
+
+    const cartItem = cart.find(item => item.id === product?.id);
+    const count = cartItem ? cartItem.count : 0;
 
     if (!product) {
-        return (
-            <div className={styles.notFound}>Товар не найден</div>
-        );
+        return <div className={styles.notFound}>Товар не найден</div>;
     }
 
     return (
-        <div className={styles.pageWrapper}>
-            <div className={styles.card}>
-                <img className={styles.image} src={product.image} alt={product.name} />
-                <div className={styles.info}>
+        <div className={styles.productPageContainer}>
+            <div className={styles.productWrapper}>
+                <div className={styles.imageBlock}>
+                    <img src={product.image} alt={product.name} className={styles.image}/>
+                </div>
+                <div className={styles.infoBlock}>
                     <h2 className={styles.title}>{product.name}</h2>
-                    <div className={styles.price}>{product.price} ₽</div>
+                    <div className={styles.price}>{product.price.toLocaleString()} ₽</div>
                     <div className={styles.desc}>{product.description}</div>
-                    <button className={styles.cartBtn} onClick={() => addToCart(product)}>
-                        В корзину
-                    </button>
+
+                    <div className={styles.actionArea}>
+                        {count === 0 ? (
+                            <button
+                                className={styles.cartBtn}
+                                onClick={() => addToCart(product)}
+                            >
+                                В корзину
+                            </button>
+                        ) : (
+                            <div className={styles.countBlock}>
+                                <button
+                                    className={styles.countBtn}
+                                    onClick={() => removeFromCart(product.id)}
+                                >-
+                                </button>
+                                <span className={styles.countNum}>{count}</span>
+                                <button
+                                    className={styles.countBtn}
+                                    onClick={() => addToCart(product)}
+                                >+
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
