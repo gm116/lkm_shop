@@ -1,74 +1,148 @@
-.pageWrapper {
-    display: flex;
-    justify-content: center;
-    padding: 36px 6px;
+.productPageContainer {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 34px 12px 36px 12px;
 }
-.card {
+
+.productWrapper {
     display: flex;
-    gap: 36px;
-    max-width: 800px;
+    gap: 48px;
+    width: 100%;
     background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 2px 12px 0 rgba(20,20,43,0.04);
-    padding: 28px;
+    border-radius: 18px;
+    box-shadow: 0 2px 16px 0 rgba(20, 20, 43, 0.07);
+    padding: 48px 48px 32px 48px;
     align-items: flex-start;
 }
-.image {
-    width: 320px;
-    border-radius: 9px;
-    object-fit: cover;
-    background: #fafafa;
+
+.imageBlock {
+    width: 340px;
+    flex-shrink: 0;
 }
-.info {
-    flex: 1 1 auto;
+
+.image {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    border-radius: 14px;
+    background: #f7f7fa;
+}
+
+.infoBlock {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 24px;
 }
+
 .title {
-    font-size: 26px;
+    font-size: 2.3rem;
     font-weight: 700;
-    margin: 0 0 6px 0;
+    margin-bottom: 12px;
 }
+
 .price {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 2rem;
+    font-weight: 600;
     color: #25a244;
+    margin-bottom: 8px;
 }
+
 .desc {
-    font-size: 15px;
+    font-size: 18px;
     color: #444;
-    margin-bottom: 18px;
 }
+
+.cartBtn:hover {
+    background: #174eb6;
+}
+
+/* Адаптив под мобилку */
+@media (max-width: 900px) {
+    .productWrapper {
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        padding: 22px 6px 20px 6px;
+    }
+
+    .imageBlock {
+        width: 100%;
+        max-width: 340px;
+        margin: 0 auto;
+    }
+
+    .infoBlock {
+        width: 100%;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+
+/* дубль из продукт кард. потом убрать в одно место */
+
+.actionArea {
+    padding: 8px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: auto;
+}
+
 .cartBtn {
     background: #226cf5;
     color: #fff;
     border: none;
-    border-radius: 7px;
-    font-size: 17px;
+    border-radius: 6px;
+    font-size: 15px;
     font-weight: 600;
-    padding: 13px 0;
+    padding: 10px 0;
     cursor: pointer;
-    transition: background 0.15s;
-}
-.cartBtn:hover {
-    background: #174eb6;
-}
-.notFound {
-    text-align: center;
-    font-size: 22px;
-    margin-top: 80px;
+    width: 100%;
+    transition: background 0.13s;
 }
 
-@media (max-width: 800px) {
-    .card {
-        flex-direction: column;
-        align-items: center;
-        padding: 16px;
-        gap: 18px;
-    }
-    .image {
-        width: 100%;
-        max-width: 340px;
-    }
+.cartBtn:hover {
+    background: #1853c3;
+}
+
+.countBlock {
+    display: flex;
+    align-items: center;
+    background: #f2f5fc;
+    border-radius: 6px;
+    width: 100%;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+.countBtn {
+    background: #e5edfa;
+    border: none;
+    border-radius: 6px;
+    font-size: 19px;
+    width: 36px;
+    height: 36px;
+    font-weight: 600;
+    color: #226cf5;
+    cursor: pointer;
+    transition: background 0.05s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.countBtn:hover {
+    background: #d2e0f8;
+}
+
+.countNum {
+    font-size: 17px;
+    font-weight: 700;
+    color: #222;
+    min-width: 28px;
+    text-align: center;
+    user-select: none;
 }
