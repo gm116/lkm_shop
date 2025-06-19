@@ -47,7 +47,7 @@ const products = [
 
 export default function ProductPage() {
     const {id} = useParams();
-    const {cart, addToCart, removeFromCart} = useCart();
+    const {cart, addToCart, decreaseCount} = useCart();
     const product = products.find(p => String(p.id) === id);
 
     const cartItem = cart.find(item => item.id === product?.id);
@@ -80,7 +80,7 @@ export default function ProductPage() {
                             <div className={styles.countBlock}>
                                 <button
                                     className={styles.countBtn}
-                                    onClick={() => removeFromCart(product.id)}
+                                    onClick={() => decreaseCount(product.id)}
                                 >-
                                 </button>
                                 <span className={styles.countNum}>{count}</span>

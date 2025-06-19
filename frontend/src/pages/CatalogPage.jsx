@@ -25,8 +25,6 @@ export default function CatalogPage() {
         (search === '' || p.name.toLowerCase().includes(search.toLowerCase()))
     );
 
-    const emptyCards = Array(4).fill(null);
-
     return (
         <div className={styles.catalogWrapper}>
             <div className={styles.catalogTitle}>Каталог товаров</div>
@@ -41,16 +39,16 @@ export default function CatalogPage() {
                 <div className={styles.mainBlock}>
                     <div className={styles.productsGrid}>
                         {filtered.length === 0
-                            ? emptyCards.map((_, i) =>
-                                <div className={styles.emptyCard} key={i}>
-                                    {i === 0 && (
-                                        <span className={styles.notFound}>
-                                            Нет товаров по заданным фильтрам
-                                        </span>
-                                    )}
+                            ? (
+                                <div className={styles.emptyCard}>
+                                    <span className={styles.notFound}>
+                                        Нет товаров по заданным фильтрам
+                                    </span>
                                 </div>
                             )
-                            : filtered.map(product => <ProductCard product={product} key={product.id}/>)
+                            : filtered.map(product =>
+                                <ProductCard product={product} key={product.id}/>
+                            )
                         }
                     </div>
                 </div>
