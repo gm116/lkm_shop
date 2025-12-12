@@ -1,0 +1,159 @@
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.back {
+    text-decoration: none;
+    color: #111827;
+    font-weight: 700;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #e6e8ef;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0 0 10px;
+}
+
+.statusRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.select {
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #e6e8ef;
+    padding: 0 12px;
+    background: #fff;
+    outline: none;
+    font-size: 14px;
+    flex: 1;
+}
+
+.select:focus {
+    border-color: #c7cbd1;
+}
+
+.btn {
+    height: 42px;
+    border: none;
+    border-radius: 12px;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    padding: 0 14px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.error {
+    color: #e53935;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.kv {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 8px 12px;
+    font-size: 14px;
+}
+
+.k {
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.v {
+    font-weight: 700;
+}
+
+.pickup {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eef0f4;
+}
+
+.pickupText {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.itemRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eef0f4;
+}
+
+.itemRow:last-child {
+    border-bottom: none;
+}
+
+.itemName {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.itemRight {
+    display: flex;
+    gap: 12px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid #eef0f4;
+    font-weight: 800;
+}
+
+@media (max-width: 720px) {
+    .kv {
+        grid-template-columns: 1fr;
+    }
+
+    .statusRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

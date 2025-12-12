@@ -1,105 +1,149 @@
 .container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px;
 }
 
 .title {
-  margin: 0 0 16px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #111;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 16px;
 }
 
-.empty {
-  padding: 14px 0;
-  color: #666;
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 16px;
 }
 
-.error {
-  margin: 0 0 12px;
-  color: #e53935;
-  font-size: 14px;
+.card {
+    background: #fff;
+    border: 1px solid #e6e8ef;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 10px;
+}
+
+.items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.itemRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eef0f4;
+}
+
+.itemRow:last-child {
+    border-bottom: none;
+}
+
+.itemName {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.itemMeta {
+    display: flex;
+    gap: 12px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eef0f4;
+    font-weight: 700;
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.block {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .input {
-  height: 42px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  outline: none;
-  font-size: 14px;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    outline: none;
+    font-size: 14px;
 }
 
 .input:focus {
-  border-color: #c7cbd1;
+    border-color: #c7cbd1;
 }
 
-.radioRow {
-  display: flex;
-  gap: 14px;
-  align-items: center;
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 10px;
 }
 
-.radioLabel {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  cursor: pointer;
-  font-size: 14px;
-  color: #111;
+.switchRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 2px;
 }
 
-.total {
-  font-size: 14px;
-  color: #111;
+.switchBtn {
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 600;
 }
 
-.total b {
-  font-weight: 700;
+.switchActive {
+    border-color: #111827;
 }
 
 .btn {
-  height: 44px;
-  border: 0;
-  border-radius: 10px;
-  background: #111;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    margin-top: 6px;
 }
 
 .btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.successRow {
-  margin-top: 16px;
+.error {
+    color: #e53935;
+    font-size: 14px;
+    margin-bottom: 6px;
 }
 
-.linkBtn {
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+.note {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 980px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }

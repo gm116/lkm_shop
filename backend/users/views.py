@@ -106,3 +106,16 @@ class MeView(APIView):
             'username': user.username,
             'email': user.email,
         }, status=status.HTTP_200_OK)
+
+class MePermissionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        groups = list(user.groups.values_list('name', flat=True))
+
+        return Response({
+            'is_staff': bool(user.is_staff),
+            'is_superuser': bool(user.is_superuser),
+            'groups': groups,
+        })

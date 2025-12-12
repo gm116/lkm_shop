@@ -10,6 +10,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
+import StaffOrdersPage from './pages/StaffOrdersPage';
+import StaffOrderPage from './pages/StaffOrderPage';
+
 import Header from './components/Header';
 import Footer from "./components/Footer";
 
@@ -17,7 +20,6 @@ import {useAuth} from './store/authContext';
 
 import './App.css';
 
-/* Защитный враппер */
 function ProtectedRoute({children}) {
     const {isAuthenticated, loading} = useAuth();
 
@@ -27,6 +29,29 @@ function ProtectedRoute({children}) {
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace/>;
+    }
+
+    return children;
+}
+
+function StaffRoute({children}) {
+    const {isAuthenticated, loading, permissions} = useAuth();
+
+    if (loading) {
+        return null;
+    }
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace/>;
+    }
+
+    const allowed =
+        permissions?.is_superuser ||
+        permissions?.is_staff ||
+        (Array.isArray(permissions?.groups) && permissions.groups.includes('warehouse'));
+
+    if (!allowed) {
+        return <Navigate to="/profile" replace/>;
     }
 
     return children;
@@ -57,6 +82,24 @@ export default function App() {
                                 <ProtectedRoute>
                                     <ProfilePage/>
                                 </ProtectedRoute>
+                            }
+                        />
+
+                        {/* STAFF — защищён по ролям */}
+                        <Route
+                            path="/staff/orders"
+                            element={
+                                <StaffRoute>
+                                    <StaffOrdersPage/>
+                                </StaffRoute>
+                            }
+                        />
+                        <Route
+                            path="/staff/orders/:id"
+                            element={
+                                <StaffRoute>
+                                    <StaffOrderPage/>
+                                </StaffRoute>
                             }
                         />
 

@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Order, OrderItem, OrderStatus, DeliveryType
+from django.db.models import Count
+
+from .models import Order, OrderItem, OrderStatus
 
 
 class OrderItemInline(admin.TabularInline):
@@ -64,10 +66,15 @@ class OrderAdmin(admin.ModelAdmin):
 
     actions = ('set_status_new', 'set_status_paid', 'set_status_shipped', 'set_status_completed', 'set_status_canceled')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_items_count=Count('items'))
+
     def items_count(self, obj):
-        return obj.items.count()
+        return getattr(obj, '_items_count', 0)
 
     items_count.short_description = 'Позиций'
+    items_count.admin_order_field = '_items_count'
 
     def _set_status(self, request, queryset, status):
         queryset.update(status=status)
@@ -108,7 +115,9 @@ class OrderAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return ro
 
+        # Если хочешь другое имя группы — поменяй тут один раз
         if request.user.groups.filter(name='warehouse').exists():
+            # Для сборщика: менять можно только status (и при желании comment).
             ro += [
                 'user',
                 'customer_name',

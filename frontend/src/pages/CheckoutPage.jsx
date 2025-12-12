@@ -1,95 +1,137 @@
 import {useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-
 import {useCart} from '../store/cartContext';
-import {createOrder} from '../api/orders';
+import {useAuth} from '../store/authContext';
+import {createOrderFromCart} from '../api/ordersApi';
 import styles from '../styles/CheckoutPage.module.css';
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const {cart, clearCart} = useCart();
+    const {accessToken, isAuthenticated} = useAuth();
+
+    const total = useMemo(() => {
+        return cart.reduce((sum, item) => sum + item.price * item.count, 0);
+    }, [cart]);
 
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
 
     const [deliveryType, setDeliveryType] = useState('pickup');
+
     const [deliveryCity, setDeliveryCity] = useState('');
     const [deliveryAddressText, setDeliveryAddressText] = useState('');
 
-    const [pickupName, setPickupName] = useState('ПВЗ тест');
-    const [pickupAddress, setPickupAddress] = useState('Москва, Тверская 1');
+    const [pickupPointName, setPickupPointName] = useState('');
+    const [pickupPointAddress, setPickupPointAddress] = useState('');
+
+    const [deliveryService, setDeliveryService] = useState('cdek');
+    const [deliveryPrice, setDeliveryPrice] = useState('0');
 
     const [comment, setComment] = useState('');
-    const [deliveryPrice, setDeliveryPrice] = useState('300');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [successOrderId, setSuccessOrderId] = useState(null);
 
-    const total = useMemo(() => {
-        return cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
-    }, [cart]);
+    const canSubmit = useMemo(() => {
+        if (!isAuthenticated) return false;
+        if (!accessToken) return false;
+        if (!cart.length) return false;
 
-    const canSubmit = cart.length > 0 && customerName.trim() && customerPhone.trim();
+        if (!customerName.trim()) return false;
+        if (!customerPhone.trim()) return false;
 
-    const handleSubmit = async (e) => {
+        if (deliveryType === 'courier') {
+            if (!deliveryCity.trim()) return false;
+            if (!deliveryAddressText.trim()) return false;
+        }
+
+        if (deliveryType === 'pickup') {
+            if (!pickupPointName.trim()) return false;
+            if (!pickupPointAddress.trim()) return false;
+        }
+
+        return true;
+    }, [
+        isAuthenticated,
+        accessToken,
+        cart.length,
+        customerName,
+        customerPhone,
+        deliveryType,
+        deliveryCity,
+        deliveryAddressText,
+        pickupPointName,
+        pickupPointAddress,
+    ]);
+
+    const onSubmit = async (e) => {
         e.preventDefault();
-        if (!canSubmit) return;
-
-        setLoading(true);
         setError('');
 
+        if (!canSubmit) return;
+
+        const payload = {
+            customer_name: customerName.trim(),
+            customer_phone: customerPhone.trim(),
+            customer_email: customerEmail.trim(),
+
+            delivery_type: deliveryType,
+
+            delivery_city: deliveryType === 'courier' ? deliveryCity.trim() : '',
+            delivery_address_text: deliveryType === 'courier' ? deliveryAddressText.trim() : '',
+
+            pickup_point_data: deliveryType === 'pickup'
+                ? {
+                    id: '',
+                    name: pickupPointName.trim(),
+                    address: pickupPointAddress.trim(),
+                }
+                : undefined,
+
+            delivery_service: deliveryService.trim(),
+            delivery_price: Number(deliveryPrice || 0),
+
+            comment: comment.trim(),
+        };
+
+        setLoading(true);
         try {
-            const payload = {
-                customer_name: customerName.trim(),
-                customer_phone: customerPhone.trim(),
-                customer_email: customerEmail.trim(),
-
-                delivery_type: deliveryType,
-                delivery_city: deliveryCity.trim(),
-                delivery_address_text: deliveryAddressText.trim(),
-
-                pickup_point_data: deliveryType === 'pickup' ? {
-                    id: 'ui_pvz_1',
-                    name: pickupName.trim(),
-                    address: pickupAddress.trim(),
-                } : null,
-
-                delivery_service: deliveryType === 'pickup' ? 'cdek' : '',
-                delivery_price: deliveryPrice ? Number(deliveryPrice) : null,
-
-                comment: comment.trim(),
-
-                items: cart.map(item => ({
-                    product_id: item.id,
-                    quantity: item.count,
-                })),
-            };
-
-            if (payload.pickup_point_data === null) {
-                delete payload.pickup_point_data;
-            }
-
-            const res = await createOrder(payload);
-
-            setSuccessOrderId(res.order_id);
-            clearCart();
+            const r = await createOrderFromCart(accessToken, payload);
+            await clearCart();
+            navigate('/profile', {state: {orderId: r.order_id}});
         } catch (err) {
-            setError(err.message || 'Ошибка оформления заказа');
+            setError(err.message || 'Ошибка оформления');
         } finally {
             setLoading(false);
         }
     };
 
-    if (successOrderId) {
+    if (!isAuthenticated) {
         return (
             <div className={styles.container}>
-                <h2 className={styles.title}>Заказ оформлен</h2>
-                <div>Номер заказа: <b>{successOrderId}</b></div>
-                <div className={styles.successRow}>
-                    <button className={styles.linkBtn} onClick={() => navigate('/catalog')}>
-                        Вернуться в каталог
+                <h2 className={styles.title}>Оформление заказа</h2>
+                <div className={styles.card}>
+                    <div className={styles.note}>
+                        Нужно войти, чтобы оформить заказ.
+                    </div>
+                    <button className={styles.btn} onClick={() => navigate('/login')}>
+                        Войти
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!cart.length) {
+        return (
+            <div className={styles.container}>
+                <h2 className={styles.title}>Оформление заказа</h2>
+                <div className={styles.card}>
+                    <div className={styles.note}>Корзина пуста</div>
+                    <button className={styles.btn} onClick={() => navigate('/catalog')}>
+                        Перейти в каталог
                     </button>
                 </div>
             </div>
@@ -100,110 +142,138 @@ export default function CheckoutPage() {
         <div className={styles.container}>
             <h2 className={styles.title}>Оформление заказа</h2>
 
-            {cart.length === 0 && (
-                <div className={styles.empty}>Корзина пуста</div>
-            )}
+            <div className={styles.grid}>
+                <div className={styles.left}>
+                    <div className={styles.card}>
+                        <div className={styles.sectionTitle}>Состав заказа</div>
 
-            {error && (
-                <div className={styles.error}>{error}</div>
-            )}
+                        <div className={styles.items}>
+                            {cart.map(item => (
+                                <div key={item.id} className={styles.itemRow}>
+                                    <div className={styles.itemName}>{item.name}</div>
+                                    <div className={styles.itemMeta}>
+                                        <span>{item.count} шт</span>
+                                        <span>{(item.price * item.count).toLocaleString()} ₽</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-            <form className={styles.form} onSubmit={handleSubmit}>
-                <div className={styles.block}>
-                    <input
-                        className={styles.input}
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Имя"
-                    />
-                    <input
-                        className={styles.input}
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="Телефон"
-                    />
-                    <input
-                        className={styles.input}
-                        value={customerEmail}
-                        onChange={(e) => setCustomerEmail(e.target.value)}
-                        placeholder="Email (необязательно)"
-                    />
+                        <div className={styles.totalRow}>
+                            <span>Итого</span>
+                            <span>{total.toLocaleString()} ₽</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div className={styles.radioRow}>
-                    <label className={styles.radioLabel}>
-                        <input
-                            type="radio"
-                            checked={deliveryType === 'pickup'}
-                            onChange={() => setDeliveryType('pickup')}
-                        />
-                        ПВЗ
-                    </label>
-                    <label className={styles.radioLabel}>
-                        <input
-                            type="radio"
-                            checked={deliveryType === 'courier'}
-                            onChange={() => setDeliveryType('courier')}
-                        />
-                        Курьер
-                    </label>
-                </div>
+                <div className={styles.right}>
+                    <form className={styles.card} onSubmit={onSubmit}>
+                        <div className={styles.sectionTitle}>Контакты</div>
 
-                <div className={styles.block}>
-                    <input
-                        className={styles.input}
-                        value={deliveryCity}
-                        onChange={(e) => setDeliveryCity(e.target.value)}
-                        placeholder="Город"
-                    />
+                        {error && <div className={styles.error}>{error}</div>}
 
-                    {deliveryType === 'pickup' ? (
-                        <>
+                        <div className={styles.form}>
                             <input
                                 className={styles.input}
-                                value={pickupName}
-                                onChange={(e) => setPickupName(e.target.value)}
-                                placeholder="Название ПВЗ"
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
+                                placeholder="ФИО"
                             />
                             <input
                                 className={styles.input}
-                                value={pickupAddress}
-                                onChange={(e) => setPickupAddress(e.target.value)}
-                                placeholder="Адрес ПВЗ"
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                placeholder="Телефон"
                             />
-                        </>
-                    ) : (
-                        <input
-                            className={styles.input}
-                            value={deliveryAddressText}
-                            onChange={(e) => setDeliveryAddressText(e.target.value)}
-                            placeholder="Адрес доставки"
-                        />
-                    )}
+                            <input
+                                className={styles.input}
+                                value={customerEmail}
+                                onChange={(e) => setCustomerEmail(e.target.value)}
+                                placeholder="Email (необязательно)"
+                            />
 
-                    <input
-                        className={styles.input}
-                        value={deliveryPrice}
-                        onChange={(e) => setDeliveryPrice(e.target.value)}
-                        placeholder="Стоимость доставки"
-                    />
+                            <div className={styles.sectionTitle}>Доставка</div>
 
-                    <input
-                        className={styles.input}
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Комментарий"
-                    />
+                            <div className={styles.switchRow}>
+                                <button
+                                    type="button"
+                                    className={`${styles.switchBtn} ${deliveryType === 'pickup' ? styles.switchActive : ''}`}
+                                    onClick={() => setDeliveryType('pickup')}
+                                >
+                                    Самовывоз (ПВЗ)
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`${styles.switchBtn} ${deliveryType === 'courier' ? styles.switchActive : ''}`}
+                                    onClick={() => setDeliveryType('courier')}
+                                >
+                                    Курьер
+                                </button>
+                            </div>
+
+                            {deliveryType === 'courier' && (
+                                <>
+                                    <input
+                                        className={styles.input}
+                                        value={deliveryCity}
+                                        onChange={(e) => setDeliveryCity(e.target.value)}
+                                        placeholder="Город"
+                                    />
+                                    <input
+                                        className={styles.input}
+                                        value={deliveryAddressText}
+                                        onChange={(e) => setDeliveryAddressText(e.target.value)}
+                                        placeholder="Адрес"
+                                    />
+                                </>
+                            )}
+
+                            {deliveryType === 'pickup' && (
+                                <>
+                                    <input
+                                        className={styles.input}
+                                        value={pickupPointName}
+                                        onChange={(e) => setPickupPointName(e.target.value)}
+                                        placeholder="Название ПВЗ"
+                                    />
+                                    <input
+                                        className={styles.input}
+                                        value={pickupPointAddress}
+                                        onChange={(e) => setPickupPointAddress(e.target.value)}
+                                        placeholder="Адрес ПВЗ"
+                                    />
+                                </>
+                            )}
+
+                            <div className={styles.row2}>
+                                <input
+                                    className={styles.input}
+                                    value={deliveryService}
+                                    onChange={(e) => setDeliveryService(e.target.value)}
+                                    placeholder="Служба доставки"
+                                />
+                                <input
+                                    className={styles.input}
+                                    value={deliveryPrice}
+                                    onChange={(e) => setDeliveryPrice(e.target.value)}
+                                    placeholder="Стоимость"
+                                />
+                            </div>
+
+                            <input
+                                className={styles.input}
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                placeholder="Комментарий (необязательно)"
+                            />
+
+                            <button className={styles.btn} disabled={!canSubmit || loading}>
+                                {loading ? 'Оформляем...' : 'Оформить заказ'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <div className={styles.total}>
-                    Итого товаров: <b>{total.toLocaleString()} ₽</b>
-                </div>
-
-                <button className={styles.btn} type="submit" disabled={!canSubmit || loading}>
-                    {loading ? 'Оформляем...' : 'Оформить заказ'}
-                </button>
-            </form>
+            </div>
         </div>
     );
 }

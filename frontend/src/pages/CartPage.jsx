@@ -9,9 +9,16 @@ export default function CartPage() {
 
     const total = cart.reduce((sum, item) => sum + item.price * item.count, 0);
 
+    const handleClear = async () => {
+        const ok = window.confirm('Очистить корзину?');
+        if (!ok) return;
+        await clearCart();
+    };
+
     return (
         <div className={styles.cartContainer}>
             <h2 className={styles.cartTitle}>Корзина</h2>
+
             {cart.length === 0 ? (
                 <div className={styles.cartEmpty}>Корзина пуста</div>
             ) : (
@@ -24,20 +31,33 @@ export default function CartPage() {
                                     className={styles.cartDeleteBtn}
                                     onClick={() => removeFromCart(item.id)}
                                     title="Удалить"
+                                    type="button"
                                 >
                                     <FaShoppingBasket size={20}/>
                                 </button>
                             </li>
                         ))}
                     </ul>
+
                     <div className={styles.cartTotal}>
                         Итого: <span>{total} ₽</span>
                     </div>
 
                     <div className={styles.cartActions}>
-                        <button className={styles.cartClearBtn} onClick={clearCart}>Очистить корзину</button>
-                        <button className={styles.checkoutBtn} onClick={() => navigate('/checkout')}>
+                        <button
+                            className={styles.cartCheckoutBtn}
+                            onClick={() => navigate('/checkout')}
+                            type="button"
+                        >
                             Перейти к оформлению
+                        </button>
+
+                        <button
+                            className={styles.cartClearBtn}
+                            onClick={handleClear}
+                            type="button"
+                        >
+                            Очистить корзину
                         </button>
                     </div>
                 </>

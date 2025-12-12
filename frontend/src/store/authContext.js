@@ -6,12 +6,29 @@ const AuthContext = createContext(null);
 export function AuthProvider({children}) {
     const [accessToken, setAccessToken] = useState('');
     const [user, setUser] = useState(null);
+    const [permissions, setPermissions] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const isAuthenticated = !!accessToken;
 
     const fetchMe = async (token) => {
         const res = await fetch('/api/users/me/', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) {
+            throw new Error('Unauthorized');
+        }
+
+        return res.json();
+    };
+
+    const fetchPermissions = async (token) => {
+        const res = await fetch('/api/users/me/permissions/', {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -36,11 +53,17 @@ export function AuthProvider({children}) {
 
             setAccessToken(r.access);
 
-            const me = await fetchMe(r.access);
+            const [me, perms] = await Promise.all([
+                fetchMe(r.access),
+                fetchPermissions(r.access),
+            ]);
+
             setUser(me);
+            setPermissions(perms);
         } catch (e) {
             setAccessToken('');
             setUser(null);
+            setPermissions(null);
         } finally {
             setLoading(false);
         }
@@ -53,15 +76,37 @@ export function AuthProvider({children}) {
 
     const register = async ({username, email, password}) => {
         const r = await registerUser({username, email, password});
+
         setAccessToken(r.access);
-        setUser(r.user || {username, email});
+
+        const token = r.access;
+
+        const [me, perms] = await Promise.all([
+            fetchMe(token),
+            fetchPermissions(token),
+        ]);
+
+        setUser(me);
+        setPermissions(perms);
+
         return r;
     };
 
     const login = async ({username, password}) => {
         const r = await loginUser({username, password});
+
         setAccessToken(r.access);
-        setUser(r.user);
+
+        const token = r.access;
+
+        const [me, perms] = await Promise.all([
+            fetchMe(token),
+            fetchPermissions(token),
+        ]);
+
+        setUser(me);
+        setPermissions(perms);
+
         return r;
     };
 
@@ -71,18 +116,21 @@ export function AuthProvider({children}) {
         } finally {
             setAccessToken('');
             setUser(null);
+            setPermissions(null);
         }
     };
 
     const value = useMemo(() => ({
         accessToken,
         user,
+        permissions,
         isAuthenticated,
         loading,
         register,
         login,
         logout,
-    }), [accessToken, user, isAuthenticated, loading]);
+        // eslint-disable-next-line
+    }), [accessToken, user, permissions, isAuthenticated, loading]);
 
     return (
         <AuthContext.Provider value={value}>
