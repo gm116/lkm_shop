@@ -1,8 +1,10 @@
 import {useCart} from '../store/cartContext';
 import {FaShoppingBasket} from 'react-icons/fa';
+import {useNavigate} from 'react-router-dom';
 import styles from '../styles/CartPage.module.css';
 
 export default function CartPage() {
+    const navigate = useNavigate();
     const {cart, removeFromCart, clearCart} = useCart();
 
     const total = cart.reduce((sum, item) => sum + item.price * item.count, 0);
@@ -31,7 +33,13 @@ export default function CartPage() {
                     <div className={styles.cartTotal}>
                         Итого: <span>{total} ₽</span>
                     </div>
-                    <button className={styles.cartClearBtn} onClick={clearCart}>Очистить корзину</button>
+
+                    <div className={styles.cartActions}>
+                        <button className={styles.cartClearBtn} onClick={clearCart}>Очистить корзину</button>
+                        <button className={styles.checkoutBtn} onClick={() => navigate('/checkout')}>
+                            Перейти к оформлению
+                        </button>
+                    </div>
                 </>
             )}
         </div>

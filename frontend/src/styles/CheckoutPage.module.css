@@ -1,0 +1,105 @@
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.title {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #111;
+}
+
+.empty {
+  padding: 14px 0;
+  color: #666;
+}
+
+.error {
+  margin: 0 0 12px;
+  color: #e53935;
+  font-size: 14px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  outline: none;
+  font-size: 14px;
+}
+
+.input:focus {
+  border-color: #c7cbd1;
+}
+
+.radioRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.radioLabel {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #111;
+}
+
+.total {
+  font-size: 14px;
+  color: #111;
+}
+
+.total b {
+  font-weight: 700;
+}
+
+.btn {
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.successRow {
+  margin-top: 16px;
+}
+
+.linkBtn {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

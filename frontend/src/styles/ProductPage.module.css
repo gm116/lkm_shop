@@ -22,7 +22,7 @@
 
 .image {
     width: 100%;
-    aspect-ratio: 1/1;
+    aspect-ratio: 3 / 4;
     object-fit: cover;
     border-radius: 14px;
     background: #f7f7fa;

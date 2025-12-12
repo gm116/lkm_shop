@@ -1,11 +1,15 @@
 import {Link, useNavigate} from 'react-router-dom';
 import {FaSearch, FaShoppingBasket, FaHeart, FaUser} from 'react-icons/fa';
+import {useCart} from '../store/cartContext';
 import styles from '../styles/Header.module.css';
 import {useRef} from 'react';
 
-export default function Header({cartCount = 0, favoriteCount = 0}) {
+export default function Header({favoriteCount = 0}) {
     const navigate = useNavigate();
     const searchInput = useRef(null);
+    const {cart} = useCart();
+    const cartCount = cart.reduce((sum, item) => sum + item.count, 0);
+
 
     const handleLogoClick = (e) => {
         e.preventDefault();
@@ -14,7 +18,8 @@ export default function Header({cartCount = 0, favoriteCount = 0}) {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        navigate('/catalog');
+        const q = (searchInput.current?.value || '').trim();
+        navigate(q ? `/catalog?search=${encodeURIComponent(q)}` : '/catalog');
     };
 
     return (
