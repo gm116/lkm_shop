@@ -82,8 +82,6 @@ export function AuthProvider({children}) {
         register,
         login,
         logout,
-        setAccessToken,
-        setUser,
     }), [accessToken, user, isAuthenticated, loading]);
 
     return (
