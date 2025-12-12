@@ -14,14 +14,17 @@ async function readJsonSafe(res) {
     try {
         return JSON.parse(text);
     } catch (e) {
-        return { __raw: text };
+        return {__raw: text};
     }
 }
 
 export async function apiGet(path) {
     let res;
     try {
-        res = await fetch(buildUrl(path), { method: 'GET' });
+        res = await fetch(buildUrl(path), {
+            method: 'GET',
+            credentials: 'include',
+        });
     } catch (e) {
         throw new Error(e?.message || 'Network error');
     }
@@ -45,7 +48,8 @@ export async function apiPost(path, body) {
     try {
         res = await fetch(buildUrl(path), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(body),
         });
     } catch (e) {
