@@ -43,19 +43,76 @@ export function AuthProvider({children}) {
         return res.json();
     };
 
-    const init = async () => {
+    const hardLogout = async () => {
         try {
-            const r = await refreshAccessToken();
-            if (!r?.access) {
+            await logoutUser();
+        } finally {
+            setAccessToken('');
+            setUser(null);
+            setPermissions(null);
+        }
+    };
+
+    const ensureFreshAccess = async () => {
+        const r = await refreshAccessToken();
+        if (!r?.access) {
+            await hardLogout();
+            return null;
+        }
+
+        setAccessToken(r.access);
+        return r.access;
+    };
+
+    const authFetch = async (url, options = {}) => {
+        const token = accessToken;
+        const headers = {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${token}`,
+        };
+
+        let res = await fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include',
+        });
+
+        if (res.status !== 401) {
+            return res;
+        }
+
+        const newToken = await ensureFreshAccess();
+        if (!newToken) {
+            return res;
+        }
+
+        const retryHeaders = {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${newToken}`,
+        };
+
+        res = await fetch(url, {
+            ...options,
+            headers: retryHeaders,
+            credentials: 'include',
+        });
+
+        return res;
+    };
+
+    const init = async () => {
+        setLoading(true);
+
+        try {
+            const token = await ensureFreshAccess();
+            if (!token) {
                 setLoading(false);
                 return;
             }
 
-            setAccessToken(r.access);
-
             const [me, perms] = await Promise.all([
-                fetchMe(r.access),
-                fetchPermissions(r.access),
+                fetchMe(token),
+                fetchPermissions(token),
             ]);
 
             setUser(me);
@@ -75,49 +132,49 @@ export function AuthProvider({children}) {
     }, []);
 
     const register = async ({username, email, password}) => {
-        const r = await registerUser({username, email, password});
+        setLoading(true);
+        try {
+            const r = await registerUser({username, email, password});
+            setAccessToken(r.access);
 
-        setAccessToken(r.access);
+            const token = r.access;
+            const [me, perms] = await Promise.all([
+                fetchMe(token),
+                fetchPermissions(token),
+            ]);
 
-        const token = r.access;
+            setUser(me);
+            setPermissions(perms);
 
-        const [me, perms] = await Promise.all([
-            fetchMe(token),
-            fetchPermissions(token),
-        ]);
-
-        setUser(me);
-        setPermissions(perms);
-
-        return r;
+            return r;
+        } finally {
+            setLoading(false);
+        }
     };
 
     const login = async ({username, password}) => {
-        const r = await loginUser({username, password});
+        setLoading(true);
+        try {
+            const r = await loginUser({username, password});
+            setAccessToken(r.access);
 
-        setAccessToken(r.access);
+            const token = r.access;
+            const [me, perms] = await Promise.all([
+                fetchMe(token),
+                fetchPermissions(token),
+            ]);
 
-        const token = r.access;
+            setUser(me);
+            setPermissions(perms);
 
-        const [me, perms] = await Promise.all([
-            fetchMe(token),
-            fetchPermissions(token),
-        ]);
-
-        setUser(me);
-        setPermissions(perms);
-
-        return r;
+            return r;
+        } finally {
+            setLoading(false);
+        }
     };
 
     const logout = async () => {
-        try {
-            await logoutUser();
-        } finally {
-            setAccessToken('');
-            setUser(null);
-            setPermissions(null);
-        }
+        await hardLogout();
     };
 
     const value = useMemo(() => ({
@@ -129,7 +186,9 @@ export function AuthProvider({children}) {
         register,
         login,
         logout,
-        // eslint-disable-next-line
+        authFetch,
+        ensureFreshAccess,
+         // eslint-disable-next-line
     }), [accessToken, user, permissions, isAuthenticated, loading]);
 
     return (

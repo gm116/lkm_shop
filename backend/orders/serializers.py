@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DeliveryType, Order
+from .models import DeliveryType
 
 
 class PickupPointSerializer(serializers.Serializer):

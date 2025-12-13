@@ -5,6 +5,7 @@ from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 from .serializers import RegisterSerializer
 
@@ -96,16 +97,38 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
+        u = request.user
         return Response({
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
+            'username': u.username,
+            'email': u.email,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+        })
+
+    def patch(self, request):
+        u = request.user
+
+        email = (request.data.get('email') or '').strip()
+        first_name = (request.data.get('first_name') or '').strip()
+        last_name = (request.data.get('last_name') or '').strip()
+
+        if email:
+            u.email = email
+
+        u.first_name = first_name
+        u.last_name = last_name
+        u.save(update_fields=['email', 'first_name', 'last_name'])
+
+        return Response({
+            'username': u.username,
+            'email': u.email,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
         }, status=status.HTTP_200_OK)
+
 
 class MePermissionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]

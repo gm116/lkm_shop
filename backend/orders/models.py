@@ -11,9 +11,9 @@ class OrderStatus(models.TextChoices):
 
 
 class DeliveryType(models.TextChoices):
-    PICKUP = 'pickup', 'Pickup'
+    STORE_PICKUP = 'store_pickup', 'Store pickup'
     COURIER = 'courier', 'Courier'
-
+    PVZ = 'pvz', 'PVZ'
 
 class Order(models.Model):
     user = models.ForeignKey(
@@ -31,7 +31,7 @@ class Order(models.Model):
     customer_phone = models.CharField(max_length=30)
     customer_email = models.EmailField(blank=True)
 
-    delivery_type = models.CharField(max_length=20, choices=DeliveryType.choices, default=DeliveryType.PICKUP)
+    delivery_type = models.CharField(max_length=20, choices=DeliveryType.choices, default=DeliveryType.STORE_PICKUP)
 
     delivery_city = models.CharField(max_length=120, blank=True)
     delivery_address_text = models.TextField(blank=True)

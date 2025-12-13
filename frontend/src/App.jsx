@@ -45,6 +45,10 @@ function StaffRoute({children}) {
         return <Navigate to="/login" replace/>;
     }
 
+    if (!permissions) {
+        return <div style={{padding: 24}}>Загрузка прав…</div>;
+    }
+
     const allowed =
         permissions?.is_superuser ||
         permissions?.is_staff ||
@@ -71,11 +75,9 @@ export default function App() {
                         <Route path="/cart" element={<CartPage/>}/>
                         <Route path="/checkout" element={<CheckoutPage/>}/>
 
-                        {/* AUTH */}
                         <Route path="/login" element={<LoginPage/>}/>
                         <Route path="/register" element={<RegisterPage/>}/>
 
-                        {/* PROFILE — защищён */}
                         <Route
                             path="/profile"
                             element={
@@ -85,7 +87,6 @@ export default function App() {
                             }
                         />
 
-                        {/* STAFF — защищён по ролям */}
                         <Route
                             path="/staff/orders"
                             element={
@@ -103,8 +104,8 @@ export default function App() {
                             }
                         />
 
-                        {/* админ — пока без защиты */}
                         <Route path="/admin" element={<AdminDashboard/>}/>
+                        <Route path="*" element={<div style={{padding: 24}}>404</div>} />
                     </Routes>
                 </main>
 

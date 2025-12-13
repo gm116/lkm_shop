@@ -47,19 +47,19 @@ export function CartProvider({children}) {
     const prevAuthRef = useRef(isAuthenticated);
     const skipGuestSaveOnceRef = useRef(false);
 
+    const justAuthedRef = useRef(false);
+
     const reloadAuthCart = useCallback(async () => {
         if (!isAuthenticated || !accessToken) return;
         const data = await getCart(accessToken);
         setCart(mapApiCartToLocal(data));
     }, [isAuthenticated, accessToken]);
 
-    // 1) Переходы auth <-> guest
     useEffect(() => {
         const prev = prevAuthRef.current;
         const next = isAuthenticated;
         prevAuthRef.current = next;
 
-        // guest -> auth
         if (!prev && next) {
             (async () => {
                 if (!accessToken) return;
@@ -74,6 +74,7 @@ export function CartProvider({children}) {
                         clearGuestCart();
                     }
 
+                    justAuthedRef.current = true;
                     await reloadAuthCart();
                 } finally {
                     setLoading(false);
@@ -82,21 +83,20 @@ export function CartProvider({children}) {
             return;
         }
 
-        // auth -> guest
         if (prev && !next) {
-            // Важно: не сохраняем "авторизованную" корзину в localStorage
-            // Просто переключаемся на гостевую (обычно пустую)
             skipGuestSaveOnceRef.current = true;
             setCart(loadGuestCart());
         }
     }, [isAuthenticated, accessToken, reloadAuthCart]);
 
-    // 2) Если пользователь уже залогинен (например refresh на старте) — загрузить корзину из БД
     useEffect(() => {
         if (!isAuthenticated || !accessToken) return;
 
-        // если пришли сюда после guest->auth, reload уже был
-        // но этот эффект безопасен (просто подтянет актуальное)
+        if (justAuthedRef.current) {
+            justAuthedRef.current = false;
+            return;
+        }
+
         (async () => {
             setLoading(true);
             try {
@@ -107,7 +107,6 @@ export function CartProvider({children}) {
         })();
     }, [isAuthenticated, accessToken, reloadAuthCart]);
 
-    // 3) Сохраняем только гостевую корзину и только когда это реально гостевой режим
     useEffect(() => {
         if (isAuthenticated) return;
 
