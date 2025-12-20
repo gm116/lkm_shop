@@ -23,7 +23,7 @@
 
 .title {
     font-size: 26px;
-    font-weight: 900;
+    font-weight: 800;
     margin: 0;
     letter-spacing: -0.02em;
 }
@@ -52,7 +52,7 @@
     border: 1px solid #e6e8ef;
     background: #fff;
     cursor: pointer;
-    font-weight: 900;
+    font-weight: 700;
     font-size: 14px;
     color: #111827;
     text-decoration: none;
@@ -72,7 +72,7 @@
     background: #111827;
     color: #fff;
     cursor: pointer;
-    font-weight: 900;
+    font-weight: 700;
     font-size: 14px;
 }
 
@@ -87,7 +87,7 @@
     border: 1px solid #fecaca;
     border-radius: 14px;
     padding: 12px 12px;
-    font-weight: 800;
+    font-weight: 650;
     margin-bottom: 12px;
 }
 
@@ -98,7 +98,7 @@
     border-radius: 18px;
     padding: 14px;
     color: #6b7280;
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .grid {
@@ -126,7 +126,7 @@
 
 .cardTitle {
     font-size: 15px;
-    font-weight: 900;
+    font-weight: 800;
 }
 
 .statusRow {
@@ -176,7 +176,7 @@
     border: 1px solid #e6e8ef;
     background: #fff;
     font-size: 12px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     white-space: nowrap;
 }
@@ -213,7 +213,7 @@
 
 .metaText {
     font-size: 13px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     white-space: nowrap;
 }
@@ -227,11 +227,11 @@
 
 .k {
     color: #6b7280;
-    font-weight: 900;
+    font-weight: 700;
 }
 
 .v {
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     min-width: 0;
     overflow: hidden;
@@ -245,7 +245,7 @@
 }
 
 .pickupTitle {
-    font-weight: 900;
+    font-weight: 750;
     font-size: 13px;
     color: #111827;
     margin-bottom: 6px;
@@ -253,7 +253,7 @@
 
 .pickupLine {
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 700;
     color: #374151;
 }
 
@@ -262,7 +262,7 @@
     padding-top: 12px;
     border-top: 1px solid #eef0f4;
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 700;
     color: #6b7280;
 }
 
@@ -290,7 +290,7 @@
 }
 
 .itemName {
-    font-weight: 900;
+    font-weight: 700;
     font-size: 14px;
     color: #111827;
     white-space: nowrap;
@@ -302,7 +302,7 @@
     margin-top: 4px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .itemRight {
@@ -310,7 +310,7 @@
     gap: 12px;
     white-space: nowrap;
     font-size: 14px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     justify-content: flex-end;
 }
@@ -321,7 +321,7 @@
     padding-top: 12px;
     margin-top: 12px;
     border-top: 1px solid #eef0f4;
-    font-weight: 900;
+    font-weight: 800;
     color: #111827;
 }
 
@@ -331,7 +331,7 @@
     gap: 10px;
     flex-wrap: wrap;
     color: #6b7280;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 12px;
     margin-top: 10px;
 }
