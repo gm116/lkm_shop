@@ -17,12 +17,12 @@ export default function CheckoutPage() {
     const navigate = useNavigate();
 
     const {cart, clearCart} = useCart();
-    const {accessToken, isAuthenticated} = useAuth();
+    const {accessToken, isAuthenticated, authFetch, logout} = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [initLoading, setInitLoading] = useState(true);
     const [error, setError] = useState('');
- // eslint-disable-next-line
+    // eslint-disable-next-line
     const [prefill, setPrefill] = useState(null);
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -96,17 +96,20 @@ export default function CheckoutPage() {
 
             try {
                 const [prefillRes, addrRes] = await Promise.all([
-                    fetch('/api/users/me/prefill/', {
+                    authFetch('/api/users/me/prefill/', {
                         method: 'GET',
                         credentials: 'include',
-                        headers: {Authorization: `Bearer ${accessToken}`},
                     }),
-                    fetch('/api/users/addresses/', {
+                    authFetch('/api/users/addresses/', {
                         method: 'GET',
                         credentials: 'include',
-                        headers: {Authorization: `Bearer ${accessToken}`},
                     }),
                 ]);
+
+                if (prefillRes.status === 401 || addrRes.status === 401) {
+                    await logout();
+                    return;
+                }
 
                 const prefillJson = await prefillRes.json().catch(() => null);
                 const addrJson = await addrRes.json().catch(() => []);
@@ -144,7 +147,7 @@ export default function CheckoutPage() {
                 setInitLoading(false);
             }
         })();
-    }, [isAuthenticated, accessToken]);
+    }, [isAuthenticated, accessToken, authFetch, logout]);
 
     const submitOrder = async (e) => {
         e.preventDefault();
@@ -195,15 +198,19 @@ export default function CheckoutPage() {
         setLoading(true);
 
         try {
-            const res = await fetch('/api/orders/', {
+            const res = await authFetch('/api/orders/create-from-cart/', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify(payload),
             });
+
+            if (res.status === 401) {
+                await logout();
+                return;
+            }
 
             const data = await res.json().catch(() => null);
 
