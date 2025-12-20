@@ -1,5 +1,4 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
-import {clearCartApi, deleteCartItem, getCart, syncCart, upsertCartItem} from '../api/cartApi';
 import {useAuth} from './authContext';
 
 const CartContext = createContext(null);
@@ -26,7 +25,10 @@ function mapApiCartToLocal(apiCart) {
     return (apiCart?.items || []).map(i => ({
         id: i.product_id,
         name: i.product_name,
+        slug: i.product_slug || '',
+        image_url: i.image_url || '',
         price: Number(i.price),
+        stock: i.stock,
         count: i.quantity,
         _cartItemId: i.id,
     }));
@@ -38,22 +40,53 @@ function guestToSyncItems(guestCart) {
         .map(i => ({product_id: i.id, quantity: i.count}));
 }
 
+async function readJsonSafe(res) {
+    const text = await res.text();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
 export function CartProvider({children}) {
-    const {isAuthenticated, accessToken} = useAuth();
+    const {isAuthenticated, accessToken, authFetch, logout} = useAuth();
 
     const [cart, setCart] = useState(() => loadGuestCart());
     const [loading, setLoading] = useState(false);
 
     const prevAuthRef = useRef(isAuthenticated);
     const skipGuestSaveOnceRef = useRef(false);
-
     const justAuthedRef = useRef(false);
+
+    const authedRequest = useCallback(async (url, {method = 'GET', body = null} = {}) => {
+        const res = await authFetch(url, {
+            method,
+            headers: body !== null ? {'Content-Type': 'application/json'} : undefined,
+            body: body !== null ? JSON.stringify(body) : undefined,
+        });
+
+        if (res.status === 401) {
+            await logout();
+            throw new Error('Unauthorized');
+        }
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok) {
+            const msg = data?.detail || data?.error || 'Request failed';
+            throw new Error(msg);
+        }
+
+        return data;
+    }, [authFetch, logout]);
 
     const reloadAuthCart = useCallback(async () => {
         if (!isAuthenticated || !accessToken) return;
-        const data = await getCart(accessToken);
+        const data = await authedRequest('/api/cart/', {method: 'GET'});
         setCart(mapApiCartToLocal(data));
-    }, [isAuthenticated, accessToken]);
+    }, [isAuthenticated, accessToken, authedRequest]);
 
     useEffect(() => {
         const prev = prevAuthRef.current;
@@ -70,7 +103,7 @@ export function CartProvider({children}) {
                     const items = guestToSyncItems(guestCart);
 
                     if (items.length) {
-                        await syncCart(accessToken, items);
+                        await authedRequest('/api/cart/sync/', {method: 'POST', body: {items}});
                         clearGuestCart();
                     }
 
@@ -87,7 +120,7 @@ export function CartProvider({children}) {
             skipGuestSaveOnceRef.current = true;
             setCart(loadGuestCart());
         }
-    }, [isAuthenticated, accessToken, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart]);
 
     useEffect(() => {
         if (!isAuthenticated || !accessToken) return;
@@ -133,9 +166,43 @@ export function CartProvider({children}) {
         const existing = cart.find(i => i.id === product.id);
         const nextQty = (existing?.count || 0) + 1;
 
-        await upsertCartItem(accessToken, product.id, nextQty);
-        await reloadAuthCart();
-    }, [isAuthenticated, accessToken, cart, reloadAuthCart]);
+        setLoading(true);
+        try {
+            await authedRequest('/api/cart/items/', {
+                method: 'POST',
+                body: {product_id: product.id, quantity: nextQty},
+            });
+            await reloadAuthCart();
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
+
+    const increaseQuantity = useCallback(async (id) => {
+        if (!isAuthenticated) {
+            setCart(prev => prev.map(i => i.id === id ? {...i, count: i.count + 1} : i));
+            return;
+        }
+
+        if (!accessToken) return;
+
+        const item = cart.find(i => i.id === id);
+        if (!item) return;
+
+        const nextQty = item.count + 1;
+        if (item.stock != null && nextQty > item.stock) return;
+
+        setLoading(true);
+        try {
+            await authedRequest('/api/cart/items/', {
+                method: 'POST',
+                body: {product_id: id, quantity: nextQty},
+            });
+            await reloadAuthCart();
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
 
     const decreaseCount = useCallback(async (id) => {
         if (!isAuthenticated) {
@@ -154,16 +221,24 @@ export function CartProvider({children}) {
 
         const nextQty = item.count - 1;
 
-        if (nextQty <= 0) {
-            if (item._cartItemId) {
-                await deleteCartItem(accessToken, item._cartItemId);
+        setLoading(true);
+        try {
+            if (nextQty <= 0) {
+                if (item._cartItemId) {
+                    await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
+                }
+            } else {
+                await authedRequest('/api/cart/items/', {
+                    method: 'POST',
+                    body: {product_id: id, quantity: nextQty},
+                });
             }
-        } else {
-            await upsertCartItem(accessToken, id, nextQty);
-        }
 
-        await reloadAuthCart();
-    }, [isAuthenticated, accessToken, cart, reloadAuthCart]);
+            await reloadAuthCart();
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
 
     const removeFromCart = useCallback(async (id) => {
         if (!isAuthenticated) {
@@ -176,9 +251,14 @@ export function CartProvider({children}) {
         const item = cart.find(i => i.id === id);
         if (!item || !item._cartItemId) return;
 
-        await deleteCartItem(accessToken, item._cartItemId);
-        await reloadAuthCart();
-    }, [isAuthenticated, accessToken, cart, reloadAuthCart]);
+        setLoading(true);
+        try {
+            await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
+            await reloadAuthCart();
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
 
     const clearCart = useCallback(async () => {
         if (!isAuthenticated) {
@@ -189,18 +269,24 @@ export function CartProvider({children}) {
 
         if (!accessToken) return;
 
-        await clearCartApi(accessToken);
-        await reloadAuthCart();
-    }, [isAuthenticated, accessToken, reloadAuthCart]);
+        setLoading(true);
+        try {
+            await authedRequest('/api/cart/clear/', {method: 'POST', body: {}});
+            await reloadAuthCart();
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart]);
 
     const value = useMemo(() => ({
         cart,
         loading,
         addToCart,
+        increaseQuantity,
         decreaseCount,
         removeFromCart,
         clearCart,
-    }), [cart, loading, addToCart, decreaseCount, removeFromCart, clearCart]);
+    }), [cart, loading, addToCart, increaseQuantity, decreaseCount, removeFromCart, clearCart]);
 
     return (
         <CartContext.Provider value={value}>

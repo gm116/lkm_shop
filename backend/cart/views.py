@@ -2,30 +2,39 @@ from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.exceptions import ValidationError
 
 from .models import Cart, CartItem
-from .serializers import CartSerializer, CartSyncSerializer, CartItemWriteSerializer
+from .serializers import CartSyncSerializer, CartItemWriteSerializer
 
 
-def serialize_cart(cart):
+def _product_image_url(request, product):
+    img = product.images.all().first()
+    if not img:
+        return ''
+
+    return img.image_url
+
+
+def serialize_cart(request, cart):
     items = []
-    for item in cart.items.select_related('product').all():
+    qs = cart.items.select_related('product').prefetch_related('product__images').all()
+
+    for item in qs:
         p = item.product
         items.append({
             'id': item.id,
             'quantity': item.quantity,
+
             'product_id': p.id,
-            'product_name': p.name,
-            'product_slug': p.slug,
-            'price': p.price,
-            'stock': p.stock,
+            'product_name': getattr(p, 'name', ''),
+            'product_slug': getattr(p, 'slug', '') or '',
+            'image_url': _product_image_url(request, p),
+
+            'price': getattr(p, 'price', 0),
+            'stock': getattr(p, 'stock', 0),
         })
 
-    return {
-        'id': cart.id,
-        'items': items,
-    }
+    return {'id': cart.id, 'items': items}
 
 
 class CartDetailView(APIView):
@@ -33,7 +42,7 @@ class CartDetailView(APIView):
 
     def get(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        return Response(serialize_cart(cart), status=status.HTTP_200_OK)
+        return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)
 
 
 class CartSyncView(APIView):
@@ -64,7 +73,7 @@ class CartSyncView(APIView):
                     item.quantity = item.quantity + qty
                     item.save(update_fields=['quantity', 'updated_at'])
 
-        return Response(serialize_cart(cart), status=status.HTTP_200_OK)
+        return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)
 
 
 class CartItemUpsertView(APIView):
@@ -88,7 +97,7 @@ class CartItemUpsertView(APIView):
                 item.quantity = data['quantity']
                 item.save(update_fields=['quantity', 'updated_at'])
 
-        return Response(serialize_cart(cart), status=status.HTTP_200_OK)
+        return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)
 
 
 class CartItemDeleteView(APIView):
@@ -110,4 +119,4 @@ class CartClearView(APIView):
     def post(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         CartItem.objects.filter(cart=cart).delete()
-        return Response(serialize_cart(cart), status=status.HTTP_200_OK)
+        return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)

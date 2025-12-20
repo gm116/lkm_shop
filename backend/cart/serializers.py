@@ -16,9 +16,12 @@ class CartItemSerializer(serializers.Serializer):
 
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
-    product_slug = serializers.CharField()
+    product_slug = serializers.CharField(allow_blank=True, required=False)
+    image_url = serializers.CharField(allow_blank=True, required=False)
+
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     stock = serializers.IntegerField()
+
 
 
 class CartSerializer(serializers.Serializer):
