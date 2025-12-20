@@ -21,6 +21,8 @@ export default function CatalogPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const [sortKey, setSortKey] = useState('default'); // добавили
+
     const search = query.get('search') || '';
 
     useEffect(() => {
@@ -88,15 +90,44 @@ export default function CatalogPage() {
         setSelectedCategoryId(id ?? null);
     };
 
+    const sortOptions = useMemo(() => ([
+        {value: 'default', label: 'По умолчанию'},
+        {value: 'price_asc', label: 'Сначала дешевле'},
+        {value: 'price_desc', label: 'Сначала дороже'},
+        {value: 'name_asc', label: 'Название A–Z'},
+    ]), []);
+
+    const sortedProducts = useMemo(() => {
+        const arr = [...products];
+
+        if (sortKey === 'price_asc') {
+            arr.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+        } else if (sortKey === 'price_desc') {
+            arr.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+        } else if (sortKey === 'name_asc') {
+            arr.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'));
+        }
+
+        return arr;
+    }, [products, sortKey]);
+
     return (
         <div className={styles.catalogWrapper}>
-            <div className={styles.catalogTitle}>Каталог товаров</div>
+            <div className={styles.catalogHead}>
+                <div className={styles.catalogTitle}>Каталог товаров</div>
+
+            </div>
+
             <div className={styles.topRow}>
                 <div className={styles.sidebarBlock}>
                     <Sidebar
                         categories={categoryNames}
                         selectedCategory={selectedCategoryName}
                         onSelectCategory={handleSelectCategory}
+
+                        sortValue={sortKey}
+                        sortOptions={sortOptions}
+                        onSelectSort={setSortKey}
                     />
                 </div>
 
@@ -115,12 +146,12 @@ export default function CatalogPage() {
 
                     {!error && !loading && (
                         <div className={styles.productsGrid}>
-                            {products.length === 0 ? (
+                            {sortedProducts.length === 0 ? (
                                 <div className={styles.emptyCard}>
                                     <span className={styles.notFound}>Нет товаров по заданным фильтрам</span>
                                 </div>
                             ) : (
-                                products.map(product => (
+                                sortedProducts.map(product => (
                                     <ProductCard product={product} key={product.id}/>
                                 ))
                             )}

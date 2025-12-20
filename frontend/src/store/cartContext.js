@@ -56,9 +56,21 @@ export function CartProvider({children}) {
     const [cart, setCart] = useState(() => loadGuestCart());
     const [loading, setLoading] = useState(false);
 
+    // важно: per-item pending, чтобы не моргали все карточки
+    const [pendingIds, setPendingIds] = useState(() => new Set());
+
     const prevAuthRef = useRef(isAuthenticated);
     const skipGuestSaveOnceRef = useRef(false);
     const justAuthedRef = useRef(false);
+
+    const setPending = useCallback((id, on) => {
+        setPendingIds(prev => {
+            const s = new Set(prev);
+            if (on) s.add(id);
+            else s.delete(id);
+            return s;
+        });
+    }, []);
 
     const authedRequest = useCallback(async (url, {method = 'GET', body = null} = {}) => {
         const res = await authFetch(url, {
@@ -119,6 +131,7 @@ export function CartProvider({children}) {
         if (prev && !next) {
             skipGuestSaveOnceRef.current = true;
             setCart(loadGuestCart());
+            setPendingIds(new Set());
         }
     }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart]);
 
@@ -152,35 +165,63 @@ export function CartProvider({children}) {
     }, [cart, isAuthenticated]);
 
     const addToCart = useCallback(async (product) => {
+        const productId = product?.id;
+        if (!productId) return;
+
+        // гостевой режим — тоже ограничиваем по stock
         if (!isAuthenticated) {
-            setCart(prev =>
-                prev.find(i => i.id === product.id)
-                    ? prev.map(i => i.id === product.id ? {...i, count: i.count + 1} : i)
-                    : [...prev, {...product, count: 1}]
-            );
+            setCart(prev => {
+                const existing = prev.find(i => i.id === productId);
+                const nextQty = (existing?.count || 0) + 1;
+
+                const stock = product?.stock;
+                if (stock != null && nextQty > Number(stock)) {
+                    return prev;
+                }
+
+                return existing
+                    ? prev.map(i => i.id === productId ? {...i, count: nextQty} : i)
+                    : [...prev, {
+                        ...product,
+                        id: productId,
+                        count: 1,
+                        image_url: product?.image_url || product?.image || '',
+                    }];
+            });
             return;
         }
 
         if (!accessToken) return;
 
-        const existing = cart.find(i => i.id === product.id);
+        const existing = cart.find(i => i.id === productId);
         const nextQty = (existing?.count || 0) + 1;
 
-        setLoading(true);
+        // автhed режим — не даём уйти за stock (берём из корзины, если есть)
+        const stock = existing?.stock ?? product?.stock;
+        if (stock != null && nextQty > Number(stock)) return;
+
+        setPending(productId, true);
         try {
             await authedRequest('/api/cart/items/', {
                 method: 'POST',
-                body: {product_id: product.id, quantity: nextQty},
+                body: {product_id: productId, quantity: nextQty},
             });
             await reloadAuthCart();
         } finally {
-            setLoading(false);
+            setPending(productId, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
 
     const increaseQuantity = useCallback(async (id) => {
+        if (!id) return;
+
         if (!isAuthenticated) {
-            setCart(prev => prev.map(i => i.id === id ? {...i, count: i.count + 1} : i));
+            setCart(prev => prev.map(i => {
+                if (i.id !== id) return i;
+                const nextQty = (i.count || 0) + 1;
+                if (i.stock != null && nextQty > Number(i.stock)) return i;
+                return {...i, count: nextQty};
+            }));
             return;
         }
 
@@ -190,9 +231,9 @@ export function CartProvider({children}) {
         if (!item) return;
 
         const nextQty = item.count + 1;
-        if (item.stock != null && nextQty > item.stock) return;
+        if (item.stock != null && nextQty > Number(item.stock)) return;
 
-        setLoading(true);
+        setPending(id, true);
         try {
             await authedRequest('/api/cart/items/', {
                 method: 'POST',
@@ -200,11 +241,13 @@ export function CartProvider({children}) {
             });
             await reloadAuthCart();
         } finally {
-            setLoading(false);
+            setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
 
     const decreaseCount = useCallback(async (id) => {
+        if (!id) return;
+
         if (!isAuthenticated) {
             setCart(prev =>
                 prev
@@ -221,7 +264,7 @@ export function CartProvider({children}) {
 
         const nextQty = item.count - 1;
 
-        setLoading(true);
+        setPending(id, true);
         try {
             if (nextQty <= 0) {
                 if (item._cartItemId) {
@@ -236,11 +279,13 @@ export function CartProvider({children}) {
 
             await reloadAuthCart();
         } finally {
-            setLoading(false);
+            setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
 
     const removeFromCart = useCallback(async (id) => {
+        if (!id) return;
+
         if (!isAuthenticated) {
             setCart(prev => prev.filter(i => i.id !== id));
             return;
@@ -251,19 +296,20 @@ export function CartProvider({children}) {
         const item = cart.find(i => i.id === id);
         if (!item || !item._cartItemId) return;
 
-        setLoading(true);
+        setPending(id, true);
         try {
             await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
             await reloadAuthCart();
         } finally {
-            setLoading(false);
+            setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
 
     const clearCart = useCallback(async () => {
         if (!isAuthenticated) {
             setCart([]);
             clearGuestCart();
+            setPendingIds(new Set());
             return;
         }
 
@@ -281,12 +327,13 @@ export function CartProvider({children}) {
     const value = useMemo(() => ({
         cart,
         loading,
+        pendingIds,
         addToCart,
         increaseQuantity,
         decreaseCount,
         removeFromCart,
         clearCart,
-    }), [cart, loading, addToCart, increaseQuantity, decreaseCount, removeFromCart, clearCart]);
+    }), [cart, loading, pendingIds, addToCart, increaseQuantity, decreaseCount, removeFromCart, clearCart]);
 
     return (
         <CartContext.Provider value={value}>

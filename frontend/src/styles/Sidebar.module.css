@@ -1,15 +1,21 @@
 .sidebar {
     background: #f2f5fc;
-    border-radius: 12px;
-    box-shadow: 0 1px 7px 0 rgba(20, 20, 43, 0.05);
-    padding: 18px 18px 10px 18px;
+    border-radius: 14px;
+    box-shadow: 0 1px 10px rgba(16, 24, 40, 0.05);
+    padding: 16px 14px 10px 14px;
     min-width: 190px;
+    position: sticky;
+    top: 84px;
+    border: 1px solid #e6eaf7;
+    max-height: calc(100vh - 120px);
+    overflow: auto;
 }
 
 .title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 13px;
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: #111827;
 }
 
 .list {
@@ -19,16 +25,35 @@
 }
 
 .sidebarItem {
-    font-size: 15px;
-    color: #222;
-    padding: 7px 0;
+    font-size: 14px;
+    color: #111827;
+    padding: 10px 10px;
     cursor: pointer;
-    transition: color 0.13s, background 0.13s;
-    border-radius: 5px;
-    margin-bottom: 2px;
+    transition: color 0.13s, background 0.13s, transform 0.06s;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-weight: 650;
+    user-select: none;
 }
 
-.sidebarItem:hover, .selected {
-    color: #226cf5;
+.sidebarItem:hover,
+.selected {
+    color: #1f4fbf;
     background: #e5edfa;
+}
+
+.sidebarItem:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 700px) {
+    .sidebar {
+        position: static;
+        max-height: none;
+    }
+}
+.divider {
+    height: 1px;
+    background: #e6eaf7;
+    margin: 14px 0;
 }

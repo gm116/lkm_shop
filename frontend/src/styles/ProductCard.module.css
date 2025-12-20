@@ -1,65 +1,112 @@
 .card {
     background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 1px 10px 0 rgba(34, 108, 245, 0.03);
+    border-radius: 14px;
+    border: 1px solid #eceef5;
+    box-shadow: 0 1px 14px rgba(16, 24, 40, 0.04);
     display: flex;
     flex-direction: column;
-    /*padding: 0px 0px 15px 0px;*/
     min-width: 0;
-    min-height: 300px;
     width: 100%;
     box-sizing: border-box;
-    transition: box-shadow 0.16s;
+    transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(16, 24, 40, 0.08);
+    border-color: #dfe5f5;
+}
+
+.media {
+    position: relative;
+    padding: 10px;
+}
+
+.mediaLink {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #eef1f7;
 }
 
 .cardImg {
     width: 100%;
     aspect-ratio: 3 / 4;
     object-fit: contain;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    background: #f3f6fa;
     display: block;
-    cursor: pointer;
-    transition: filter 0.15s;
+    background: #fff;
 }
 
-.cardImg:hover {
-    filter: brightness(0.93);
+.cardImgPh {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(135deg, #f3f4f6, #eef2ff);
+}
+
+.badgeOut {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    background: rgba(17, 24, 39, 0.92);
+    color: #fff;
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
 }
 
 .cardName {
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 7px;
-    padding: 0 0 0 10px;
-    color: #1a1b1c;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 2px 12px 0 12px;
+    color: #111827;
     line-height: 1.2;
-    transition: color 0.1s;
     text-decoration: none;
     cursor: pointer;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 38px;
 }
 
 .cardName:hover {
-    color: #226cf5;
+    color: #1f4fbf;
+    text-decoration: underline;
+}
+
+.cardPriceRow {
+    padding: 6px 12px 0 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .cardPrice {
-    font-size: 19px;
-    padding: 0 0 0 10px;
+    font-size: 18px;
     font-weight: 700;
-    color: #24a244;
-    margin-bottom: 14px;
+    color: #16a34a;
 }
 
 .ruble {
-    font-size: 17px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.stockHint {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 650;
+    white-space: nowrap;
 }
 
 .actionArea {
-    padding: 8px;
-    min-height: 48px;
+    padding: 10px 12px 12px 12px;
+    min-height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -70,40 +117,51 @@
     background: #226cf5;
     color: #fff;
     border: none;
-    border-radius: 6px;
-    font-size: 15px;
+    border-radius: 12px;
+    font-size: 14px;
     font-weight: 600;
-    padding: 10px 0;
+    padding: 12px 0;
     cursor: pointer;
     width: 100%;
-    transition: background 0.13s;
+    transition: background 0.13s, transform 0.06s;
 }
 
 .cartBtn:hover {
     background: #1853c3;
 }
 
+.cartBtn:active {
+    transform: translateY(1px);
+}
+
+.cartBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .countBlock {
     display: flex;
     align-items: center;
-    background: #f2f5fc;
-    border-radius: 6px;
+    background: #f3f6ff;
+    border: 1px solid #e1e9ff;
+    border-radius: 12px;
     width: 100%;
     justify-content: space-between;
-    padding: 4px 0;
+    padding: 6px;
+    gap: 8px;
 }
 
 .countBtn {
     background: #e5edfa;
     border: none;
-    border-radius: 6px;
-    font-size: 19px;
-    width: 36px;
-    height: 36px;
-    font-weight: 600;
+    border-radius: 10px;
+    font-size: 18px;
+    width: 38px;
+    height: 38px;
+    font-weight: 900;
     color: #226cf5;
     cursor: pointer;
-    transition: background 0.05s;
+    transition: background 0.08s, transform 0.06s;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -113,10 +171,19 @@
     background: #d2e0f8;
 }
 
+.countBtn:active {
+    transform: translateY(1px);
+}
+
+.countBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .countNum {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
-    color: #222;
+    color: #111827;
     min-width: 28px;
     text-align: center;
     user-select: none;
