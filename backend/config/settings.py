@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
@@ -26,7 +26,8 @@ SECRET_KEY = config('SECRET_KEY', default='default_secret_key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'uncheering-phenomenologically-leroy.ngrok-free.dev']
+
 
 # Application definition
 
@@ -44,7 +45,11 @@ INSTALLED_APPS = [
     'cart',
     'orders',
     'reviews',
+    'payments',
 ]
+
+
+YOOKASSA_RETURN_URL = os.getenv('YOOKASSA_RETURN_URL', 'http://localhost:3000/profile')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -58,7 +63,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://uncheering-phenomenologically-leroy.ngrok-free.dev',
+]
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -131,6 +138,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
+    'https://uncheering-phenomenologically-leroy.ngrok-free.dev'
 ]
 
 REST_FRAMEWORK = {

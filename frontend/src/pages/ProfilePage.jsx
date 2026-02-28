@@ -10,7 +10,7 @@ function formatMoney(v) {
 function statusLabel(status) {
     if (!status) return '';
     const map = {
-        new: 'Новый',
+        new: 'Ожидает сборки',
         paid: 'Оплачен',
         shipped: 'Отправлен',
         completed: 'Выполнен',
@@ -756,7 +756,7 @@ export default function ProfilePage() {
                                             },
                                             shipped: {
                                                 tone: styles.stShipped,
-                                                title: 'Отправлен',
+                                                title: 'Доставляется',
                                                 desc: 'Заказ передан в доставку.'
                                             },
                                             completed: {

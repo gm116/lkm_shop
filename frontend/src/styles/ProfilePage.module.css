@@ -877,9 +877,9 @@
 
 /* Status tones */
 .stNew {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #334155;
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
 }
 
 .stPaid {

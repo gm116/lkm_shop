@@ -31,6 +31,7 @@ export default function CheckoutPage() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
 
+    const [checkoutInProgress, setCheckoutInProgress] = useState(false);
     const [deliveryType, setDeliveryType] = useState('store_pickup'); // store_pickup | courier | pvz
     const [deliveryService, setDeliveryService] = useState('cdek');
 
@@ -162,21 +163,12 @@ export default function CheckoutPage() {
             customer_name: customerName.trim(),
             customer_phone: customerPhone.trim(),
             customer_email: customerEmail.trim(),
-
             delivery_type: deliveryType,
             delivery_service: deliveryType === 'pvz' ? deliveryService : '',
-
             delivery_city: '',
             delivery_address_text: '',
-
-            pickup_point_data: null,
-
             comment: comment.trim(),
-
-            items: cart.map(it => ({
-                product_id: it.id,
-                quantity: it.count,
-            })),
+            items: cart.map(it => ({product_id: it.id, quantity: it.count})),
         };
 
         if (deliveryType === 'courier') {
@@ -195,39 +187,74 @@ export default function CheckoutPage() {
             };
         }
 
+        if (deliveryType === 'store_pickup') {
+            payload.pickup_point_data = {
+                id: 'store_default',
+                name: 'Самовывоз',
+                address: 'Адрес магазина',
+            };
+        }
+
         setLoading(true);
+        setCheckoutInProgress(true);
 
         try {
-            const res = await authFetch('/api/orders/create-from-cart/', {
+            const resOrder = await authFetch('/api/orders/create-from-cart/', {
                 method: 'POST',
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload),
             });
 
-            if (res.status === 401) {
+            if (resOrder.status === 401) {
                 await logout();
+                setCheckoutInProgress(false);
                 return;
             }
 
-            const data = await res.json().catch(() => null);
+            const orderData = await resOrder.json().catch(() => null);
+            if (!resOrder.ok) throw new Error(orderData?.detail || 'Ошибка оформления заказа');
 
-            if (!res.ok) {
-                throw new Error(data?.detail || 'Ошибка оформления заказа');
-            }
+            const orderId = orderData?.order_id;
+            if (!orderId) throw new Error('Не пришел order_id');
 
-            const orderId = data?.order_id;
+            const resPay = await authFetch('/api/payments/create/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: orderId}),
+            });
 
-            clearCart();
-            navigate('/profile', {state: {orderId}});
-        } catch (e) {
-            setError(e.message || 'Ошибка оформления заказа');
+            const payData = await resPay.json().catch(() => null);
+            if (!resPay.ok) throw new Error(payData?.detail || 'Ошибка создания платежа');
+
+            const confirmationUrl = payData?.confirmation_url;
+            if (!confirmationUrl) throw new Error('Не пришел confirmation_url');
+
+            await clearCart();
+
+            navigate('/checkout/redirect', {
+                replace: true,
+                state: {orderId, confirmationUrl},
+            });
+
+            // важно: НЕ делаем setCheckoutInProgress(false) тут
+            // мы уходим со страницы
+        } catch (err) {
+            setError(err?.message || 'Ошибка');
+            setCheckoutInProgress(false);
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (checkoutInProgress) return;
+        if (loading) return;
+        if (cart.length === 0 && isAuthenticated) {
+            navigate('/profile', {replace: true});
+        }
+    }, [cart.length, checkoutInProgress, loading, isAuthenticated, navigate]);
 
     if (!isAuthenticated) {
         return (

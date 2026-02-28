@@ -49,6 +49,53 @@
     justify-content: flex-end;
 }
 
+.filters {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filterLabel {
+    font-size: 12px;
+    font-weight: 800;
+    color: #6b7280;
+}
+
+.dateRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dateDash {
+    color: #6b7280;
+    font-weight: 800;
+}
+
+.dateInput {
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 12px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    color: #111827;
+    outline: none;
+}
+
+.dateInput:focus {
+    border-color: #c7cbd1;
+}
+
 .btnLight {
     height: 36px;
     padding: 0 14px;
@@ -149,9 +196,10 @@
     overflow-x: auto;
 }
 
+/* ВАЖНО: items-колонка стала шире */
 .tableHead {
     display: grid;
-    grid-template-columns: 70px 180px 170px minmax(280px, 1fr) 90px 140px 220px 140px;
+    grid-template-columns: 70px 180px 170px minmax(420px, 1fr) 90px 140px 220px;
     gap: 10px;
     padding: 12px 14px;
     background: #fafbfe;
@@ -159,22 +207,33 @@
     font-size: 12px;
     color: #6b7280;
     font-weight: 700;
-    min-width: 1100px;
+    min-width: 1120px;
 }
 
 .tableBody {
     display: flex;
     flex-direction: column;
-    min-width: 1100px;
+    min-width: 1120px;
 }
 
 .row {
     display: grid;
-    grid-template-columns: 70px 180px 170px minmax(280px, 1fr) 90px 140px 220px 140px;
+    grid-template-columns: 70px 180px 170px minmax(420px, 1fr) 90px 140px 220px;
     gap: 10px;
     padding: 12px 14px;
     border-bottom: 1px solid #eef0f4;
     align-items: center;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.row:hover {
+    background: #fafbfe;
+}
+
+.row:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px rgba(17, 24, 39, 0.12);
 }
 
 .row:last-child {
@@ -202,16 +261,6 @@
     color: #6b7280;
     font-weight: 650;
     font-size: 13px;
-}
-
-.itemName {
-    display: block;
-    font-weight: 650;
-    font-size: 13px;
-    color: #111827;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .qty {
@@ -247,6 +296,76 @@
     text-overflow: ellipsis;
 }
 
+/* Позиции внутри заказа */
+.itemsWrap {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.itemsEmpty {
+    color: #6b7280;
+    font-weight: 650;
+}
+
+.itemChip {
+    min-height: 56px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    border-radius: 12px;
+    padding: 6px 8px;
+    max-width: 320px;
+    min-width: 180px;
+}
+
+.itemImg {
+    width: 42px;
+    aspect-ratio: 3 / 4;
+    height: auto;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f2f5fc;
+    flex: 0 0 auto;
+}
+
+.itemImgPh {
+    width: 42px;
+    aspect-ratio: 3 / 4;
+    height: auto;
+    border-radius: 10px;
+    background: #f2f5fc;
+    border: 1px solid #e6e8ef;
+    flex: 0 0 auto;
+}
+
+.itemText {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.itemTitle {
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+}
+
+.itemMeta {
+    font-weight: 700;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* Бейджи статусов — твои же цвета */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -291,27 +410,6 @@
     color: #991b1b;
 }
 
-.linkBtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 34px;
-    padding: 0 12px;
-    border-radius: 12px;
-    border: 1px solid #e6e8ef;
-    background: #fff;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 13px;
-    color: #111827;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.linkBtn:hover {
-    background: #f5f7fb;
-}
-
 @media (max-width: 720px) {
     .page {
         padding: 18px 12px 36px;
@@ -323,6 +421,10 @@
     }
 
     .headRight {
+        justify-content: flex-start;
+    }
+
+    .filters {
         justify-content: flex-start;
     }
 }

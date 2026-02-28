@@ -1,9 +1,18 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState, useRef, useCallback} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import styles from '../styles/StaffOrderPage.module.css';
 import {useAuth} from '../store/authContext';
 
 const STATUSES = ['new', 'paid', 'shipped', 'completed', 'canceled'];
+
+function statusLabel(s) {
+    if (s === 'new') return 'Ожидает сборки';
+    if (s === 'paid') return 'Оплачен';
+    if (s === 'shipped') return 'Отгружен';
+    if (s === 'completed') return 'Доставлен';
+    if (s === 'canceled') return 'Отменён';
+    return s || '';
+}
 
 function fmtMoney(v) {
     const n = Number(v || 0);
@@ -27,6 +36,40 @@ function safeStr(v) {
     return v == null ? '' : String(v);
 }
 
+function itemName(it) {
+    return it?.product_name_snapshot || it?.product_name || it?.name || '';
+}
+
+function itemProductId(it) {
+    return it?.product_id || it?.product || it?.id || null;
+}
+
+async function readJsonSafe(res) {
+    const text = await res.text();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
+function itemImage(it, productImageMap) {
+    const direct =
+        it?.image_url_snapshot ||
+        it?.product_image_snapshot ||
+        it?.image_url ||
+        it?.image ||
+        '';
+
+    if (direct) return direct;
+
+    const pid = itemProductId(it);
+    if (!pid) return '';
+
+    return productImageMap.get(String(pid)) || '';
+}
+
 export default function StaffOrderPage() {
     const {id} = useParams();
     const {authFetch} = useAuth();
@@ -38,18 +81,23 @@ export default function StaffOrderPage() {
 
     const [nextStatus, setNextStatus] = useState('new');
 
-    const url = useMemo(() => `/api/staff/orders/${id}/`, [id]);
+    const urlGet = useMemo(() => `/api/staff/orders/${id}/`, [id]);
+    const urlStatus = useMemo(() => `/api/staff/orders/${id}/status/`, [id]);
 
-    const load = async () => {
+    // кэш картинок по product_id (строка → url)
+    const [productImageMap, setProductImageMap] = useState(() => new Map());
+    const inFlightRef = useRef(new Set());
+
+    const load = useCallback(async () => {
         setError('');
         setLoading(true);
         try {
-            const res = await authFetch(url, {method: 'GET'});
+            const res = await authFetch(urlGet, {method: 'GET'});
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
+                const data = await readJsonSafe(res);
                 throw new Error(data?.detail || 'Не удалось загрузить заказ');
             }
-            const data = await res.json();
+            const data = await readJsonSafe(res);
             setOrder(data);
             setNextStatus(data?.status || 'new');
         } catch (e) {
@@ -58,12 +106,112 @@ export default function StaffOrderPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [authFetch, urlGet]);
 
     useEffect(() => {
         load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [url]);
+    }, [load]);
+
+    // подтягиваем картинки для product_id, которых нет в кэше
+    useEffect(() => {
+        const items = Array.isArray(order?.items) ? order.items : [];
+        if (!items.length) return;
+
+        const ids = new Set();
+
+        for (const it of items) {
+            const alreadyInItem =
+                it?.image_url_snapshot ||
+                it?.product_image_snapshot ||
+                it?.image_url ||
+                it?.image;
+
+            if (alreadyInItem) continue;
+
+            const pid = itemProductId(it);
+            if (!pid) continue;
+
+            const key = String(pid);
+            if (productImageMap.has(key)) continue;
+            if (inFlightRef.current.has(key)) continue;
+
+            ids.add(key);
+        }
+
+        if (ids.size === 0) return;
+
+        let cancelled = false;
+
+        const fetchOne = async (key) => {
+            inFlightRef.current.add(key);
+            try {
+                // ВАЖНО: у тебя в urls это /api/catalog/products/<pk>/
+                const res = await authFetch(`/api/catalog/products/${key}/`, {method: 'GET'});
+                if (!res.ok) return;
+
+                const data = await readJsonSafe(res);
+
+                // твой ProductDetailSerializer возвращает images: [url, ...]
+                const url =
+                    (Array.isArray(data?.images) && data.images[0]) ||
+                    data?.image ||
+                    data?.image_url ||
+                    '';
+
+                if (!cancelled && url) {
+                    setProductImageMap(prev => {
+                        const next = new Map(prev);
+                        next.set(key, url);
+                        return next;
+                    });
+                }
+            } finally {
+                inFlightRef.current.delete(key);
+            }
+        };
+
+        const run = async () => {
+            const list = Array.from(ids);
+            const CONCURRENCY = 6;
+
+            for (let i = 0; i < list.length; i += CONCURRENCY) {
+                const chunk = list.slice(i, i + CONCURRENCY);
+                await Promise.all(chunk.map(fetchOne));
+                if (cancelled) break;
+            }
+        };
+
+        run();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [order, authFetch, productImageMap]);
+
+    const patchStatus = async () => {
+        const res = await authFetch(urlStatus, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: nextStatus}),
+        });
+        return res;
+    };
+
+    const fallbackStatus = async () => {
+        let res = await authFetch(urlStatus, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: nextStatus}),
+        });
+        if (res.status !== 405) return res;
+
+        res = await authFetch(urlStatus, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: nextStatus}),
+        });
+        return res;
+    };
 
     const saveStatus = async () => {
         if (!order) return;
@@ -71,19 +219,19 @@ export default function StaffOrderPage() {
 
         setError('');
         setSaving(true);
+
         try {
-            const res = await authFetch(url, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({status: nextStatus}),
-            });
+            let res = await patchStatus();
+            if (res.status === 405) {
+                res = await fallbackStatus();
+            }
 
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
+                const data = await readJsonSafe(res);
                 throw new Error(data?.detail || 'Не удалось обновить статус');
             }
 
-            const updated = await res.json().catch(() => (null));
+            const updated = await readJsonSafe(res);
             if (updated) {
                 setOrder(updated);
                 setNextStatus(updated.status || nextStatus);
@@ -105,7 +253,9 @@ export default function StaffOrderPage() {
             <div className={styles.head}>
                 <div className={styles.headLeft}>
                     <h1 className={styles.title}>Заказ #{id}</h1>
-                    <div className={styles.sub}>{order?.created_at ? fmtDateTime(order.created_at) : ''}</div>
+                    <div className={styles.sub}>
+                        {order?.created_at ? fmtDateTime(order.created_at) : ''}
+                    </div>
                 </div>
                 <div className={styles.headRight}>
                     <Link to="/staff/orders" className={styles.btnLight}>Назад</Link>
@@ -124,6 +274,10 @@ export default function StaffOrderPage() {
                         <div className={styles.card}>
                             <div className={styles.cardHead}>
                                 <div className={styles.cardTitle}>Статус</div>
+                                <span
+                                    className={`${styles.statusPill} ${styles[`status_${safeStr(order.status)}`] || ''}`}>
+                                    {statusLabel(order.status)}
+                                </span>
                             </div>
 
                             <div className={styles.statusRow}>
@@ -133,7 +287,7 @@ export default function StaffOrderPage() {
                                     onChange={(e) => setNextStatus(e.target.value)}
                                 >
                                     {STATUSES.map(s => (
-                                        <option key={s} value={s}>{s}</option>
+                                        <option key={s} value={s}>{statusLabel(s)}</option>
                                     ))}
                                 </select>
 
@@ -142,19 +296,16 @@ export default function StaffOrderPage() {
                                     onClick={saveStatus}
                                     disabled={saving || nextStatus === order.status}
                                 >
-                                    Сохранить
+                                    {saving ? 'Сохраняю…' : 'Сохранить'}
                                 </button>
                             </div>
 
                             <div className={styles.statusMeta}>
-                                <div className={styles.statusPillWrap}>
-                                    <span
-                                        className={`${styles.statusPill} ${styles[`status_${safeStr(order.status)}`] || ''}`}>
-                                        {safeStr(order.status)}
-                                    </span>
-                                </div>
                                 <div className={styles.metaText}>
                                     Сумма: {fmtMoney(order.total_amount)} ₽
+                                </div>
+                                <div className={styles.metaTextMuted}>
+                                    Позиций: {(order.items || []).length}
                                 </div>
                             </div>
                         </div>
@@ -217,18 +368,36 @@ export default function StaffOrderPage() {
                         </div>
 
                         <div className={styles.items}>
-                            {(order.items || []).map(it => (
-                                <div className={styles.itemRow} key={it.id}>
-                                    <div className={styles.itemLeft}>
-                                        <div className={styles.itemName}>{safeStr(it.product_name_snapshot)}</div>
-                                        <div className={styles.itemSub}>#{safeStr(it.product_id || it.product)}</div>
+                            {(order.items || []).map(it => {
+                                const img = itemImage(it, productImageMap);
+                                const name = itemName(it);
+
+                                return (
+                                    <div className={styles.itemRow} key={it.id}>
+                                        <div className={styles.itemLeft}>
+                                            <div className={styles.itemMedia}>
+                                                {img ? (
+                                                    <img className={styles.itemImg} src={img} alt={name}/>
+                                                ) : (
+                                                    <div className={styles.itemImgPh}/>
+                                                )}
+                                            </div>
+
+                                            <div className={styles.itemInfo}>
+                                                <div className={styles.itemName}>{name}</div>
+                                                <div className={styles.itemSub}>
+                                                    #{safeStr(itemProductId(it))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.itemRight}>
+                                            <div className={styles.itemQty}>{safeStr(it.quantity)} шт</div>
+                                            <div className={styles.itemPrice}>{fmtMoney(it.price_snapshot)} ₽</div>
+                                        </div>
                                     </div>
-                                    <div className={styles.itemRight}>
-                                        <div className={styles.itemQty}>{safeStr(it.quantity)} шт</div>
-                                        <div className={styles.itemPrice}>{fmtMoney(it.price_snapshot)} ₽</div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className={styles.total}>

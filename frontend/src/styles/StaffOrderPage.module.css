@@ -285,8 +285,45 @@
     border-bottom: none;
 }
 
+.metaTextMuted {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
 .itemLeft {
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.itemImg {
+    width: 54px;
+    height: 72px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: #f2f5fc;
+    border: 1px solid #e6e8ef;
+    display: block;
+}
+
+.itemMedia {
+    flex: 0 0 auto;
+}
+.itemImgPh {
+    width: 54px;
+    height: 72px;
+    border-radius: 14px;
+    background: #f2f5fc;
+    border: 1px solid #e6e8ef;
+}
+
+.itemInfo {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .itemName {

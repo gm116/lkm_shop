@@ -33,7 +33,7 @@ class OrderCreateFromCartSerializer(serializers.Serializer):
             if not attrs.get('delivery_address_text'):
                 raise serializers.ValidationError({'delivery_address_text': 'Required for courier'})
 
-        if delivery_type == DeliveryType.PICKUP:
+        if delivery_type == DeliveryType.STORE_PICKUP:
             if not attrs.get('pickup_point_data'):
                 raise serializers.ValidationError({'pickup_point_data': 'Required for pickup'})
 
