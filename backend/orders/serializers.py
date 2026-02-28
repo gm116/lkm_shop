@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DeliveryType
+from .models import DeliveryType, Order
 
 
 class PickupPointSerializer(serializers.Serializer):
@@ -63,3 +63,48 @@ class OrderOutSerializer(serializers.Serializer):
 
     created_at = serializers.DateTimeField()
     items = OrderItemOutSerializer(many=True)
+
+
+class StaffOrderOutSerializer(OrderOutSerializer):
+    customer_name = serializers.CharField()
+    customer_phone = serializers.CharField()
+    customer_email = serializers.CharField(allow_blank=True)
+    comment = serializers.CharField(allow_blank=True)
+    updated_at = serializers.DateTimeField()
+
+
+def serialize_order_item(item):
+    return {
+        'id': item.id,
+        'product_id': item.product_id,
+        'product_name_snapshot': item.product_name_snapshot,
+        'price_snapshot': item.price_snapshot,
+        'quantity': item.quantity,
+    }
+
+
+def serialize_order(order: Order, include_customer: bool = False):
+    payload = {
+        'id': order.id,
+        'status': order.status,
+        'total_amount': order.total_amount,
+        'delivery_type': order.delivery_type,
+        'delivery_city': order.delivery_city,
+        'delivery_address_text': order.delivery_address_text,
+        'pickup_point_data': order.pickup_point_data,
+        'delivery_service': order.delivery_service,
+        'delivery_price': order.delivery_price,
+        'created_at': order.created_at,
+        'updated_at': order.updated_at,
+        'items': [serialize_order_item(item) for item in order.items.all()],
+    }
+
+    if include_customer:
+        payload.update({
+            'customer_name': order.customer_name,
+            'customer_phone': order.customer_phone,
+            'customer_email': order.customer_email,
+            'comment': order.comment,
+        })
+
+    return payload

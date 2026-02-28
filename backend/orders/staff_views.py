@@ -2,44 +2,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
+from django.db.models.functions import Cast
+from django.db.models import CharField
 
 from .models import Order
 from .permissions import IsStaffOrWarehouseGroup
-from .staff_serializers import StaffOrderSerializer, StaffOrderStatusUpdateSerializer
-
-
-def _serialize_order(o):
-    items = []
-    for it in o.items.all():
-        items.append({
-            'id': it.id,
-            'product_id': it.product_id,
-            'product_name_snapshot': it.product_name_snapshot,
-            'price_snapshot': it.price_snapshot,
-            'quantity': it.quantity,
-        })
-
-    return {
-        'id': o.id,
-        'status': o.status,
-        'total_amount': o.total_amount,
-
-        'customer_name': o.customer_name,
-        'customer_phone': o.customer_phone,
-        'customer_email': o.customer_email,
-
-        'delivery_type': o.delivery_type,
-        'delivery_city': o.delivery_city,
-        'delivery_address_text': o.delivery_address_text,
-
-        'pickup_point_data': o.pickup_point_data,
-        'delivery_service': o.delivery_service,
-        'delivery_price': o.delivery_price,
-
-        'comment': o.comment,
-        'created_at': o.created_at,
-        'items': items,
-    }
+from .staff_serializers import StaffOrderStatusUpdateSerializer
+from .serializers import serialize_order
 
 
 class StaffOrdersListView(APIView):
@@ -59,8 +28,9 @@ class StaffOrdersListView(APIView):
             qs = qs.filter(delivery_type=delivery_type)
 
         if q:
+            qs = qs.annotate(id_text=Cast('id', output_field=CharField()))
             qs = qs.filter(
-                Q(id__icontains=q) |
+                Q(id_text__icontains=q) |
                 Q(customer_name__icontains=q) |
                 Q(customer_phone__icontains=q) |
                 Q(customer_email__icontains=q)
@@ -68,7 +38,7 @@ class StaffOrdersListView(APIView):
 
         qs = qs[:100]
 
-        data = [_serialize_order(o) for o in qs]
+        data = [serialize_order(order, include_customer=True) for order in qs]
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -81,7 +51,7 @@ class StaffOrderDetailView(APIView):
         except Order.DoesNotExist:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response(_serialize_order(o), status=status.HTTP_200_OK)
+        return Response(serialize_order(o, include_customer=True), status=status.HTTP_200_OK)
 
 
 class StaffOrderStatusUpdateView(APIView):
@@ -97,6 +67,7 @@ class StaffOrderStatusUpdateView(APIView):
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
         o.status = serializer.validated_data['status']
-        o.save(update_fields=['status'])
+        o.save(update_fields=['status', 'updated_at'])
+        o.refresh_from_db()
 
-        return Response({'id': o.id, 'status': o.status}, status=status.HTTP_200_OK)
+        return Response(serialize_order(o, include_customer=True), status=status.HTTP_200_OK)

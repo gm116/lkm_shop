@@ -70,6 +70,13 @@ function itemImage(it, productImageMap) {
     return productImageMap.get(String(pid)) || '';
 }
 
+function deliveryLabel(type) {
+    if (type === 'store_pickup') return 'Самовывоз';
+    if (type === 'courier') return 'Курьер';
+    if (type === 'pvz') return 'ПВЗ';
+    return type || '';
+}
+
 export default function StaffOrderPage() {
     const {id} = useParams();
     const {authFetch} = useAuth();
@@ -247,171 +254,192 @@ export default function StaffOrderPage() {
 
     const pickupAddress = order?.pickup_point_data?.address || '';
     const pickupName = order?.pickup_point_data?.name || '';
+    const itemsTotal = (order?.items || []).reduce((sum, item) => sum + Number(item?.quantity || 0), 0);
 
     return (
         <div className={styles.page}>
-            <div className={styles.head}>
-                <div className={styles.headLeft}>
-                    <h1 className={styles.title}>Заказ #{id}</h1>
-                    <div className={styles.sub}>
-                        {order?.created_at ? fmtDateTime(order.created_at) : ''}
-                    </div>
-                </div>
-                <div className={styles.headRight}>
-                    <Link to="/staff/orders" className={styles.btnLight}>Назад</Link>
-                </div>
-            </div>
-
-            {error ? <div className={styles.error}>{error}</div> : null}
-
-            {loading ? (
-                <div className={styles.skeleton}>Загрузка...</div>
-            ) : !order ? (
-                <div className={styles.empty}>Заказ не найден</div>
-            ) : (
-                <>
-                    <div className={styles.grid}>
-                        <div className={styles.card}>
-                            <div className={styles.cardHead}>
-                                <div className={styles.cardTitle}>Статус</div>
-                                <span
-                                    className={`${styles.statusPill} ${styles[`status_${safeStr(order.status)}`] || ''}`}>
-                                    {statusLabel(order.status)}
-                                </span>
-                            </div>
-
-                            <div className={styles.statusRow}>
-                                <select
-                                    className={styles.select}
-                                    value={nextStatus}
-                                    onChange={(e) => setNextStatus(e.target.value)}
-                                >
-                                    {STATUSES.map(s => (
-                                        <option key={s} value={s}>{statusLabel(s)}</option>
-                                    ))}
-                                </select>
-
-                                <button
-                                    className={styles.btnPrimary}
-                                    onClick={saveStatus}
-                                    disabled={saving || nextStatus === order.status}
-                                >
-                                    {saving ? 'Сохраняю…' : 'Сохранить'}
-                                </button>
-                            </div>
-
-                            <div className={styles.statusMeta}>
-                                <div className={styles.metaText}>
-                                    Сумма: {fmtMoney(order.total_amount)} ₽
-                                </div>
-                                <div className={styles.metaTextMuted}>
-                                    Позиций: {(order.items || []).length}
-                                </div>
-                            </div>
+            <div className={styles.shell}>
+                <div className={styles.head}>
+                    <div className={styles.headLeft}>
+                        <h1 className={styles.title}>Заказ #{id}</h1>
+                        <div className={styles.sub}>
+                            {order?.created_at ? fmtDateTime(order.created_at) : ''}
                         </div>
-
-                        <div className={styles.card}>
-                            <div className={styles.cardHead}>
-                                <div className={styles.cardTitle}>Клиент</div>
+                        <div className={styles.heroStats}>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{itemsTotal}</span>
+                                <span className={styles.heroStatLabel}>товаров</span>
                             </div>
-
-                            <div className={styles.kv}>
-                                <div className={styles.k}>Имя</div>
-                                <div className={styles.v}>{safeStr(order.customer_name)}</div>
-
-                                <div className={styles.k}>Телефон</div>
-                                <div className={styles.v}>{safeStr(order.customer_phone)}</div>
-
-                                <div className={styles.k}>Email</div>
-                                <div className={styles.v}>{safeStr(order.customer_email)}</div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{fmtMoney(order?.total_amount || 0)} ₽</span>
+                                <span className={styles.heroStatLabel}>сумма</span>
                             </div>
-                        </div>
-
-                        <div className={styles.card}>
-                            <div className={styles.cardHead}>
-                                <div className={styles.cardTitle}>Доставка</div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{deliveryLabel(order?.delivery_type)}</span>
+                                <span className={styles.heroStatLabel}>доставка</span>
                             </div>
-
-                            <div className={styles.kv}>
-                                <div className={styles.k}>Тип</div>
-                                <div className={styles.v}>{safeStr(order.delivery_type)}</div>
-
-                                <div className={styles.k}>Служба</div>
-                                <div className={styles.v}>{safeStr(order.delivery_service)}</div>
-
-                                <div className={styles.k}>Город</div>
-                                <div className={styles.v}>{safeStr(order.delivery_city)}</div>
-
-                                <div className={styles.k}>Адрес</div>
-                                <div className={styles.v}>{safeStr(order.delivery_address_text)}</div>
-                            </div>
-
-                            {(pickupName || pickupAddress) ? (
-                                <div className={styles.pickup}>
-                                    <div className={styles.pickupTitle}>ПВЗ</div>
-                                    {pickupName ? <div className={styles.pickupLine}>{pickupName}</div> : null}
-                                    {pickupAddress ? <div className={styles.pickupLine}>{pickupAddress}</div> : null}
-                                </div>
-                            ) : null}
-
-                            {order.comment ? (
-                                <div className={styles.comment}>
-                                    {safeStr(order.comment)}
-                                </div>
-                            ) : null}
                         </div>
                     </div>
+                    <div className={styles.headRight}>
+                        <Link to="/staff/orders" className={styles.btnLight}>Назад</Link>
+                    </div>
+                </div>
 
-                    <div className={styles.card}>
-                        <div className={styles.cardHead}>
-                            <div className={styles.cardTitle}>Состав заказа</div>
+                {error ? <div className={styles.error}>{error}</div> : null}
+
+                {loading ? (
+                    <div className={styles.loadingGrid}>
+                        <div className={styles.skeletonCard}/>
+                        <div className={styles.skeletonCard}/>
+                        <div className={styles.skeletonCardWide}/>
+                    </div>
+                ) : !order ? (
+                    <div className={styles.empty}>Заказ не найден</div>
+                ) : (
+                    <>
+                        <div className={styles.grid}>
+                            <div className={styles.card}>
+                                <div className={styles.cardHead}>
+                                    <div className={styles.cardTitle}>Статус</div>
+                                    <span
+                                        className={`${styles.statusPill} ${styles[`status_${safeStr(order.status)}`] || ''}`}>
+                                        {statusLabel(order.status)}
+                                    </span>
+                                </div>
+
+                                <div className={styles.statusRow}>
+                                    <select
+                                        className={styles.select}
+                                        value={nextStatus}
+                                        onChange={(e) => setNextStatus(e.target.value)}
+                                    >
+                                        {STATUSES.map(s => (
+                                            <option key={s} value={s}>{statusLabel(s)}</option>
+                                        ))}
+                                    </select>
+
+                                    <button
+                                        className={styles.btnPrimary}
+                                        onClick={saveStatus}
+                                        disabled={saving || nextStatus === order.status}
+                                    >
+                                        {saving ? 'Сохраняю…' : 'Сохранить'}
+                                    </button>
+                                </div>
+
+                                <div className={styles.statusMeta}>
+                                    <div className={styles.metaText}>
+                                        Сумма: {fmtMoney(order.total_amount)} ₽
+                                    </div>
+                                    <div className={styles.metaTextMuted}>
+                                        Товаров: {itemsTotal}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.card}>
+                                <div className={styles.cardHead}>
+                                    <div className={styles.cardTitle}>Клиент</div>
+                                </div>
+
+                                <div className={styles.kv}>
+                                    <div className={styles.k}>Имя</div>
+                                    <div className={styles.v}>{safeStr(order.customer_name)}</div>
+
+                                    <div className={styles.k}>Телефон</div>
+                                    <div className={styles.v}>{safeStr(order.customer_phone)}</div>
+
+                                    <div className={styles.k}>Email</div>
+                                    <div className={styles.v}>{safeStr(order.customer_email)}</div>
+                                </div>
+                            </div>
+
+                            <div className={styles.card}>
+                                <div className={styles.cardHead}>
+                                    <div className={styles.cardTitle}>Доставка</div>
+                                </div>
+
+                                <div className={styles.kv}>
+                                    <div className={styles.k}>Тип</div>
+                                    <div className={styles.v}>{deliveryLabel(order.delivery_type)}</div>
+
+                                    <div className={styles.k}>Служба</div>
+                                    <div className={styles.v}>{safeStr(order.delivery_service) || '—'}</div>
+
+                                    <div className={styles.k}>Город</div>
+                                    <div className={styles.v}>{safeStr(order.delivery_city) || '—'}</div>
+
+                                    <div className={styles.k}>Адрес</div>
+                                    <div className={styles.v}>{safeStr(order.delivery_address_text) || '—'}</div>
+                                </div>
+
+                                {(pickupName || pickupAddress) ? (
+                                    <div className={styles.pickup}>
+                                        <div className={styles.pickupTitle}>ПВЗ</div>
+                                        {pickupName ? <div className={styles.pickupLine}>{pickupName}</div> : null}
+                                        {pickupAddress ? <div className={styles.pickupLine}>{pickupAddress}</div> : null}
+                                    </div>
+                                ) : null}
+
+                                {order.comment ? (
+                                    <div className={styles.comment}>
+                                        {safeStr(order.comment)}
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
 
-                        <div className={styles.items}>
-                            {(order.items || []).map(it => {
-                                const img = itemImage(it, productImageMap);
-                                const name = itemName(it);
+                        <div className={styles.card}>
+                            <div className={styles.cardHead}>
+                                <div className={styles.cardTitle}>Состав заказа</div>
+                            </div>
 
-                                return (
-                                    <div className={styles.itemRow} key={it.id}>
-                                        <div className={styles.itemLeft}>
-                                            <div className={styles.itemMedia}>
-                                                {img ? (
-                                                    <img className={styles.itemImg} src={img} alt={name}/>
-                                                ) : (
-                                                    <div className={styles.itemImgPh}/>
-                                                )}
-                                            </div>
+                            <div className={styles.items}>
+                                {(order.items || []).map(it => {
+                                    const img = itemImage(it, productImageMap);
+                                    const name = itemName(it);
 
-                                            <div className={styles.itemInfo}>
-                                                <div className={styles.itemName}>{name}</div>
-                                                <div className={styles.itemSub}>
-                                                    #{safeStr(itemProductId(it))}
+                                    return (
+                                        <div className={styles.itemRow} key={it.id}>
+                                            <div className={styles.itemLeft}>
+                                                <div className={styles.itemMedia}>
+                                                    {img ? (
+                                                        <img className={styles.itemImg} src={img} alt={name}/>
+                                                    ) : (
+                                                        <div className={styles.itemImgPh}/>
+                                                    )}
+                                                </div>
+
+                                                <div className={styles.itemInfo}>
+                                                    <div className={styles.itemName}>{name}</div>
+                                                    <div className={styles.itemSub}>
+                                                        #{safeStr(itemProductId(it))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className={styles.itemRight}>
-                                            <div className={styles.itemQty}>{safeStr(it.quantity)} шт</div>
-                                            <div className={styles.itemPrice}>{fmtMoney(it.price_snapshot)} ₽</div>
+                                            <div className={styles.itemRight}>
+                                                <div className={styles.itemQty}>{safeStr(it.quantity)} шт</div>
+                                                <div className={styles.itemPrice}>{fmtMoney(it.price_snapshot)} ₽</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
+
+                            <div className={styles.total}>
+                                <div>Итого</div>
+                                <div>{fmtMoney(order.total_amount)} ₽</div>
+                            </div>
                         </div>
 
-                        <div className={styles.total}>
-                            <div>Итого</div>
-                            <div>{fmtMoney(order.total_amount)} ₽</div>
+                        <div className={styles.footerMeta}>
+                            <div>Создан: {fmtDateTime(order.created_at)}</div>
+                            <div>Обновлён: {fmtDateTime(order.updated_at)}</div>
                         </div>
-                    </div>
-
-                    <div className={styles.footerMeta}>
-                        <div>Создан: {fmtDateTime(order.created_at)}</div>
-                        <div>Обновлён: {fmtDateTime(order.updated_at)}</div>
-                    </div>
-                </>
-            )}
+                    </>
+                )}
+            </div>
         </div>
     );
 }

@@ -6,6 +6,8 @@ import ProductCard from '../components/ProductCard';
 import styles from '../styles/CatalogPage.module.css';
 import {getCategories, getProducts} from '../api/catalog';
 
+const SKELETON_COUNT = 8;
+
 function useQuery() {
     const {search} = useLocation();
     return useMemo(() => new URLSearchParams(search), [search]);
@@ -111,6 +113,11 @@ export default function CatalogPage() {
         return arr;
     }, [products, sortKey]);
 
+    const skeletonItems = useMemo(
+        () => Array.from({length: SKELETON_COUNT}, (_, index) => `skeleton-${index}`),
+        []
+    );
+
     return (
         <div className={styles.catalogWrapper}>
             <div className={styles.catalogHead}>
@@ -132,31 +139,40 @@ export default function CatalogPage() {
                 </div>
 
                 <div className={styles.mainBlock}>
-                    {error && (
-                        <div className={styles.emptyCard}>
-                            <span className={styles.notFound}>{error}</span>
-                        </div>
-                    )}
-
-                    {!error && loading && (
-                        <div className={styles.emptyCard}>
-                            <span className={styles.notFound}>Загрузка...</span>
-                        </div>
-                    )}
-
-                    {!error && !loading && (
+                    <div className={styles.gridFrame}>
                         <div className={styles.productsGrid}>
-                            {sortedProducts.length === 0 ? (
+                            {loading && skeletonItems.map(item => (
+                                <div className={styles.skeletonCard} key={item} aria-hidden="true">
+                                    <div className={styles.skeletonImg}/>
+                                    <div className={styles.skeletonLine}/>
+                                    <div className={styles.skeletonLineShort}/>
+                                    <div className={styles.skeletonBtn}/>
+                                </div>
+                            ))}
+
+                            {!loading && !error && sortedProducts.map(product => (
+                                <ProductCard product={product} key={product.id}/>
+                            ))}
+
+                            {error && (
+                                <div className={styles.emptyCard}>
+                                    <span className={styles.notFound}>{error}</span>
+                                </div>
+                            )}
+
+                            {!error && loading && (
+                                <div className={styles.statusCard}>
+                                    <span className={styles.notFound}>Загрузка...</span>
+                                </div>
+                            )}
+
+                            {!error && !loading && sortedProducts.length === 0 && (
                                 <div className={styles.emptyCard}>
                                     <span className={styles.notFound}>Нет товаров по заданным фильтрам</span>
                                 </div>
-                            ) : (
-                                sortedProducts.map(product => (
-                                    <ProductCard product={product} key={product.id}/>
-                                ))
                             )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

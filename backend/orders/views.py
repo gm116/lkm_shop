@@ -5,8 +5,9 @@ from rest_framework import status, permissions
 from rest_framework.exceptions import ValidationError
 
 from cart.models import Cart, CartItem
+from catalog.models import Product
 from .models import Order, OrderItem
-from .serializers import OrderCreateFromCartSerializer, OrderOutSerializer
+from .serializers import OrderCreateFromCartSerializer, serialize_order
 
 
 class OrderCreateFromCartView(APIView):
@@ -25,10 +26,22 @@ class OrderCreateFromCartView(APIView):
             .select_related('product')
         )
 
-        if not cart_items.exists():
-            raise ValidationError({'detail': 'Cart is empty'})
-
         with transaction.atomic():
+            cart_items = list(
+                cart_items
+                .select_for_update()
+                .order_by('id')
+            )
+
+            if not cart_items:
+                raise ValidationError({'detail': 'Cart is empty'})
+
+            product_ids = [item.product_id for item in cart_items]
+            locked_products = {
+                product.id: product
+                for product in Product.objects.select_for_update().filter(id__in=product_ids)
+            }
+
             order = Order.objects.create(
                 user=request.user,
 
@@ -49,8 +62,8 @@ class OrderCreateFromCartView(APIView):
 
             total = 0
 
-            for cart_item in cart_items.select_for_update():
-                product = cart_item.product
+            for cart_item in cart_items:
+                product = locked_products.get(cart_item.product_id)
 
                 if not product or not product.is_active:
                     raise ValidationError({'detail': 'Product unavailable'})
@@ -96,33 +109,7 @@ class MyOrdersView(APIView):
             .order_by('-id')[:50]
         )
 
-        data = []
-        for o in orders:
-            items = []
-            for it in o.items.all():
-                items.append({
-                    'id': it.id,
-                    'product_id': it.product_id,
-                    'product_name_snapshot': it.product_name_snapshot,
-                    'price_snapshot': it.price_snapshot,
-                    'quantity': it.quantity,
-                })
-
-            data.append({
-                'id': o.id,
-                'status': o.status,
-                'total_amount': o.total_amount,
-                'delivery_type': o.delivery_type,
-                'delivery_city': o.delivery_city,
-                'delivery_address_text': o.delivery_address_text,
-                'pickup_point_data': o.pickup_point_data,
-                'delivery_service': o.delivery_service,
-                'delivery_price': o.delivery_price,
-                'created_at': o.created_at,
-                'items': items,
-            })
-
-        return Response(data, status=status.HTTP_200_OK)
+        return Response([serialize_order(order) for order in orders], status=status.HTTP_200_OK)
 
 
 class OrderDetailView(APIView):
@@ -138,28 +125,4 @@ class OrderDetailView(APIView):
         except Order.DoesNotExist:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        items = []
-        for it in o.items.all():
-            items.append({
-                'id': it.id,
-                'product_id': it.product_id,
-                'product_name_snapshot': it.product_name_snapshot,
-                'price_snapshot': it.price_snapshot,
-                'quantity': it.quantity,
-            })
-
-        payload = {
-            'id': o.id,
-            'status': o.status,
-            'total_amount': o.total_amount,
-            'delivery_type': o.delivery_type,
-            'delivery_city': o.delivery_city,
-            'delivery_address_text': o.delivery_address_text,
-            'pickup_point_data': o.pickup_point_data,
-            'delivery_service': o.delivery_service,
-            'delivery_price': o.delivery_price,
-            'created_at': o.created_at,
-            'items': items,
-        }
-
-        return Response(payload, status=status.HTTP_200_OK)
+        return Response(serialize_order(o), status=status.HTTP_200_OK)

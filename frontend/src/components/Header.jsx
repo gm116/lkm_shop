@@ -13,7 +13,10 @@ export default function Header({favoriteCount = 0}) {
 
     const {cart} = useCart();
     const {isAuthenticated, logout, permissions} = useAuth();
-    const isStaff = !!permissions?.is_staff || !!permissions?.is_admin || !!permissions?.staff;
+    const isStaff =
+        !!permissions?.is_superuser ||
+        !!permissions?.is_staff ||
+        (Array.isArray(permissions?.groups) && permissions.groups.includes('warehouse'));
 
     const cartCount = useMemo(() => {
         return cart.reduce((sum, item) => sum + Number(item.count || 0), 0);

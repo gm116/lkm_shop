@@ -3,6 +3,8 @@ import {useNavigate} from 'react-router-dom';
 import styles from '../styles/StaffOrdersPage.module.css';
 import {useAuth} from '../store/authContext';
 
+const ORDER_SKELETON_COUNT = 6;
+
 const STATUS_TABS = [
     {key: 'new', label: 'Новые'},
     {key: 'paid', label: 'Оплачены'},
@@ -278,6 +280,18 @@ export default function StaffOrdersPage() {
 
     const title = 'Заказы';
     const sub = activeStatus === 'new' ? 'Новые' : statusLabel(activeStatus);
+    const totalOrders = filteredSortedOrders.length;
+
+    const summary = useMemo(() => {
+        const sum = filteredSortedOrders.reduce((acc, order) => acc + Number(order?.total_amount || 0), 0);
+        const units = filteredSortedOrders.reduce((acc, order) => acc + itemsCount(order), 0);
+        return {sum, units};
+    }, [filteredSortedOrders]);
+
+    const skeletonCards = useMemo(
+        () => Array.from({length: ORDER_SKELETON_COUNT}, (_, index) => `order-skeleton-${index}`),
+        []
+    );
 
     const openOrder = (id) => {
         if (!id) return;
@@ -298,6 +312,20 @@ export default function StaffOrdersPage() {
                     <div className={styles.headLeft}>
                         <h1 className={styles.title}>{title}</h1>
                         <div className={styles.sub}>{sub}</div>
+                        <div className={styles.headStats}>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{totalOrders}</span>
+                                <span className={styles.heroStatLabel}>заказов</span>
+                            </div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{summary.units}</span>
+                                <span className={styles.heroStatLabel}>товаров</span>
+                            </div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.heroStatValue}>{money(summary.sum)} ₽</span>
+                                <span className={styles.heroStatLabel}>на сумму</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className={styles.headRight}>
@@ -343,126 +371,142 @@ export default function StaffOrdersPage() {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className={styles.tabs}>
-                {STATUS_TABS.map(t => (
-                    <button
-                        key={t.key}
-                        type="button"
-                        className={`${styles.tabBtn} ${activeStatus === t.key ? styles.tabBtnActive : ''}`}
-                        onClick={() => setActiveStatus(t.key)}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-
-            {error && (
-                <div className={`${styles.notice} ${styles.noticeErr}`}>
-                    <span>{error}</span>
+                <div className={styles.tabs}>
+                    {STATUS_TABS.map(t => (
+                        <button
+                            key={t.key}
+                            type="button"
+                            className={`${styles.tabBtn} ${activeStatus === t.key ? styles.tabBtnActive : ''}`}
+                            onClick={() => setActiveStatus(t.key)}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
-            )}
 
-            <div className={styles.panel}>
-                <div className={styles.table}>
-                    <div className={styles.tableHead}>
-                        <div className={styles.colId}>№</div>
-                        <div className={styles.colStatus}>Статус</div>
-                        <div className={styles.colDate}>Дата</div>
-                        <div className={styles.colItems}>Позиции</div>
-                        <div className={styles.colQty}>Кол-во</div>
-                        <div className={styles.colSum}>Сумма</div>
-                        <div className={styles.colDelivery}>Доставка</div>
+                {error && (
+                    <div className={`${styles.notice} ${styles.noticeErr}`}>
+                        <span>{error}</span>
                     </div>
+                )}
 
+                <div className={styles.panel}>
                     {loading ? (
-                        <div className={styles.skeleton}>Загрузка…</div>
+                        <div className={styles.ordersGrid}>
+                            {skeletonCards.map(card => (
+                                <div key={card} className={styles.orderSkeleton} aria-hidden="true">
+                                    <div className={styles.orderSkeletonTop}/>
+                                    <div className={styles.orderSkeletonMeta}/>
+                                    <div className={styles.orderSkeletonMetaShort}/>
+                                    <div className={styles.orderSkeletonItems}>
+                                        <div className={styles.orderSkeletonItem}/>
+                                        <div className={styles.orderSkeletonItem}/>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     ) : filteredSortedOrders.length === 0 ? (
-                        <div className={styles.empty}>Заказов нет</div>
+                        <div className={styles.emptyState}>
+                            <div className={styles.emptyIcon}>Заказов нет</div>
+                            <div className={styles.emptyTitle}>Ничего не найдено по текущим фильтрам</div>
+                            <div className={styles.emptyText}>Измени статус или период, чтобы показать подходящие заказы.</div>
+                        </div>
                     ) : (
-                        <div className={styles.tableBody}>
+                        <div className={styles.ordersGrid}>
                             {filteredSortedOrders.map(o => {
                                 const items = Array.isArray(o?.items) ? o.items : [];
+                                const previewItems = items.slice(0, 3);
+                                const restItemsCount = Math.max(items.length - previewItems.length, 0);
+
                                 return (
                                     <div
                                         key={o.id}
-                                        className={styles.row}
+                                        className={styles.orderCard}
                                         role="button"
                                         tabIndex={0}
                                         onClick={() => openOrder(o.id)}
                                         onKeyDown={(e) => onRowKeyDown(e, o.id)}
                                         title="Открыть заказ"
                                     >
-                                        <div className={styles.colId}>
-                                            <span className={styles.idValue}>{o.id}</span>
-                                        </div>
+                                        <div className={styles.orderCardHead}>
+                                            <div className={styles.orderLead}>
+                                                <div className={styles.orderIdRow}>
+                                                    <span className={styles.orderId}>Заказ #{o.id}</span>
+                                                    <span className={`${styles.badge} ${styles[`badge_${o.status}`] || ''}`}>
+                                                        {statusLabel(o.status)}
+                                                    </span>
+                                                </div>
+                                                <div className={styles.orderMetaRow}>
+                                                    <span className={styles.metaChip}>{formatDateTime(o.created_at)}</span>
+                                                    <span className={styles.metaChip}>{deliveryLabel(o.delivery_type)}</span>
+                                                    <span className={styles.metaChip}>{itemsCount(o)} шт.</span>
+                                                </div>
+                                            </div>
 
-                                        <div className={styles.colStatus}>
-                                            <span className={`${styles.badge} ${styles[`badge_${o.status}`] || ''}`}>
-                                                {statusLabel(o.status)}
-                                            </span>
-                                        </div>
-
-                                        <div className={styles.colDate}>
-                                            <span className={styles.muted}>{formatDateTime(o.created_at)}</span>
-                                        </div>
-
-                                        <div className={styles.colItems}>
-                                            <div className={styles.itemsWrap}>
-                                                {items.length === 0 ? (
-                                                    <span className={styles.itemsEmpty}>—</span>
-                                                ) : (
-                                                    items.map((it, idx) => {
-                                                        const img = itemImage(it, productImageMap);
-                                                        const name = itemName(it);
-                                                        const qty = Number(it?.quantity || 0);
-
-                                                        return (
-                                                            <div
-                                                                key={it.id || `${o.id}_${idx}`}
-                                                                className={styles.itemChip}
-                                                                title={name}
-                                                            >
-                                                                {img ? (
-                                                                    <img
-                                                                        className={styles.itemImg}
-                                                                        src={img}
-                                                                        alt={name}
-                                                                    />
-                                                                ) : (
-                                                                    <div className={styles.itemImgPh}/>
-                                                                )}
-
-                                                                <div className={styles.itemText}>
-                                                                    <span className={styles.itemTitle}>{name || '—'}</span>
-                                                                    <span className={styles.itemMeta}>× {qty}</span>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })
-                                                )}
+                                            <div className={styles.orderTotalBlock}>
+                                                <span className={styles.orderTotal}>{money(o.total_amount)} ₽</span>
+                                                <span className={styles.orderTotalSub}>{o.delivery_service || 'Без уточнения службы'}</span>
                                             </div>
                                         </div>
 
-                                        <div className={styles.colQty}>
-                                            <span className={styles.qty}>{itemsCount(o)}</span>
-                                        </div>
+                                        <div className={styles.orderBody}>
+                                            <div className={styles.orderSection}>
+                                                <div className={styles.sectionLabel}>Состав</div>
+                                                <div className={styles.itemsStack}>
+                                                    {previewItems.length === 0 ? (
+                                                        <div className={styles.itemsEmpty}>Позиции не добавлены</div>
+                                                    ) : (
+                                                        previewItems.map((it, idx) => {
+                                                            const img = itemImage(it, productImageMap);
+                                                            const name = itemName(it);
+                                                            const qty = Number(it?.quantity || 0);
 
-                                        <div className={styles.colSum}>
-                                            <span className={styles.sum}>{money(o.total_amount)} ₽</span>
-                                        </div>
+                                                            return (
+                                                                <div
+                                                                    key={it.id || `${o.id}_${idx}`}
+                                                                    className={styles.itemChip}
+                                                                    title={name}
+                                                                >
+                                                                    {img ? (
+                                                                        <img
+                                                                            className={styles.itemImg}
+                                                                            src={img}
+                                                                            alt={name}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className={styles.itemImgPh}/>
+                                                                    )}
 
-                                        <div className={styles.colDelivery}>
-                                            <div className={styles.deliveryBlock}>
-                                                <div className={styles.deliveryType}>
-                                                    {deliveryLabel(o.delivery_type)}
+                                                                    <div className={styles.itemText}>
+                                                                        <span className={styles.itemTitle}>{name || '—'}</span>
+                                                                        <span className={styles.itemMeta}>Количество: {qty}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+
+                                                    {restItemsCount > 0 && (
+                                                        <div className={styles.moreItems}>
+                                                            Еще {restItemsCount} поз.
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {o.delivery_service ? (
-                                                    <div className={styles.deliveryMeta}>{o.delivery_service}</div>
-                                                ) : (
-                                                    <div className={styles.deliveryMeta}>—</div>
-                                                )}
+                                            </div>
+
+                                            <div className={styles.orderAside}>
+                                                <div className={styles.orderInfoCard}>
+                                                    <div className={styles.sectionLabel}>Доставка</div>
+                                                    <div className={styles.deliveryType}>{deliveryLabel(o.delivery_type)}</div>
+                                                    <div className={styles.deliveryMeta}>{o.delivery_service || 'Служба не указана'}</div>
+                                                </div>
+
+                                                <div className={styles.orderInfoCard}>
+                                                    <div className={styles.sectionLabel}>Итоги</div>
+                                                    <div className={styles.infoValue}>{itemsCount(o)} товара</div>
+                                                    <div className={styles.infoSub}>Открыть карточку заказа</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

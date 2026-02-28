@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
 
+from orders.models import OrderStatus
 from .models import Payment
 from .serializers import CreatePaymentSerializer
 from .services.yookassa_client import create_payment_for_order, fetch_payment
@@ -28,17 +29,16 @@ def _order_description(order: Order) -> str:
 
 
 def _sync_order_paid(order: Order):
-    # Не ломаем твою логику: ставим paid только если у тебя такой статус реально есть
-    # Если у тебя иначе — поменяй одну строку.
     if hasattr(order, 'status'):
-        order.status = 'paid'
+        order.status = OrderStatus.PAID
     if hasattr(order, 'is_paid'):
         order.is_paid = True
     order.save(update_fields=[f for f in ['status', 'is_paid', 'updated_at'] if hasattr(order, f)])
 
+
 def _sync_order_canceled(order: Order):
     if hasattr(order, 'status'):
-        order.status = 'canceled'  # если у тебя иначе называется — поменяй тут
+        order.status = OrderStatus.CANCELED
     if hasattr(order, 'is_paid'):
         order.is_paid = False
     order.save(update_fields=[f for f in ['status', 'is_paid', 'updated_at'] if hasattr(order, f)])
@@ -61,8 +61,7 @@ class CreatePaymentView(APIView):
             if hasattr(order, 'user_id') and order.user_id != request.user.id:
                 return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-            # Если уже paid — не создаём новый платёж
-            if getattr(order, 'status', '') == 'paid' or getattr(order, 'is_paid', False):
+            if getattr(order, 'status', '') == OrderStatus.PAID or getattr(order, 'is_paid', False):
                 return Response({"detail": "Заказ уже оплачен"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Защита от дублей: если есть активный payment, просто возвращаем ссылку
@@ -167,9 +166,12 @@ class PaymentSyncView(APIView):
 
     def post(self, request, order_id: int):
         # ручная “дожималка” для фронта после return_url
-        p = Payment.objects.filter(order_id=order_id).order_by('-created_at').first()
+        p = Payment.objects.filter(order_id=order_id).select_related('order').order_by('-created_at').first()
         if not p or not p.provider_payment_id:
             return Response({"detail": "Платёж не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+        if getattr(p.order, 'user_id', None) != request.user.id:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         data = fetch_payment(p.provider_payment_id)
         new_status = data.get("status") or p.status
@@ -182,5 +184,7 @@ class PaymentSyncView(APIView):
 
         if new_status == Payment.Status.SUCCEEDED:
             _sync_order_paid(p.order)
+        elif new_status == Payment.Status.CANCELED:
+            _sync_order_canceled(p.order)
 
         return Response({"status": p.status}, status=status.HTTP_200_OK)

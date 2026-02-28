@@ -2,9 +2,9 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 
-from backend.payments.models import Payment
-from backend.payments.services.yookassa_client import fetch_payment
-from backend.payments.views import _sync_order_paid
+from payments.models import Payment
+from payments.services.yookassa_client import fetch_payment
+from payments.views import _sync_order_paid, _sync_order_canceled
 
 class Command(BaseCommand):
     help = "Reconcile pending YooKassa payments"
@@ -34,5 +34,7 @@ class Command(BaseCommand):
 
             if p.status == Payment.Status.SUCCEEDED:
                 _sync_order_paid(p.order)
+            elif p.status == Payment.Status.CANCELED:
+                _sync_order_canceled(p.order)
 
         self.stdout.write(self.style.SUCCESS("OK"))

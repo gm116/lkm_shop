@@ -2,9 +2,11 @@ from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.exceptions import ValidationError
 
 from .models import Cart, CartItem
 from .serializers import CartSyncSerializer, CartItemWriteSerializer
+from catalog.models import Product
 
 
 def _product_image_url(request, product):
@@ -37,6 +39,21 @@ def serialize_cart(request, cart):
     return {'id': cart.id, 'items': items}
 
 
+def _get_locked_product(product_id: int) -> Product:
+    try:
+        return Product.objects.select_for_update().get(id=product_id)
+    except Product.DoesNotExist as exc:
+        raise ValidationError({'detail': f'Product not found: {product_id}'}) from exc
+
+
+def _validate_cart_quantity(product: Product, quantity: int):
+    if not product.is_active:
+        raise ValidationError({'detail': f'Product unavailable: {product.id}'})
+
+    if quantity > product.stock:
+        raise ValidationError({'detail': f'Not enough stock for product_id={product.id}'})
+
+
 class CartDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -63,15 +80,20 @@ class CartSyncView(APIView):
                 if qty <= 0:
                     continue
 
+                product = _get_locked_product(product_id)
+
                 item, created = CartItem.objects.select_for_update().get_or_create(
                     cart=cart,
-                    product_id=product_id,
+                    product=product,
                     defaults={'quantity': qty},
                 )
 
                 if not created:
                     item.quantity = item.quantity + qty
+                    _validate_cart_quantity(product, item.quantity)
                     item.save(update_fields=['quantity', 'updated_at'])
+                else:
+                    _validate_cart_quantity(product, item.quantity)
 
         return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)
 
@@ -86,10 +108,12 @@ class CartItemUpsertView(APIView):
 
         with transaction.atomic():
             cart, _ = Cart.objects.select_for_update().get_or_create(user=request.user)
+            product = _get_locked_product(data['product_id'])
+            _validate_cart_quantity(product, data['quantity'])
 
             item, created = CartItem.objects.select_for_update().get_or_create(
                 cart=cart,
-                product_id=data['product_id'],
+                product=product,
                 defaults={'quantity': data['quantity']},
             )
 

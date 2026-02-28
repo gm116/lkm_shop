@@ -1,8 +1,10 @@
 .catalogWrapper {
     max-width: 1240px;
+    width: 100%;
     margin: 0 auto;
     padding: 34px 12px 36px 12px;
     min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .catalogTitle {
@@ -15,14 +17,18 @@
 
 .topRow {
     display: flex;
+    width: 100%;
     align-items: flex-start;
+    justify-content: flex-start;
     gap: 32px;
     margin-bottom: 28px;
 }
 
 .sidebarBlock {
+    width: 210px;
     min-width: 210px;
     flex-shrink: 0;
+    align-self: flex-start;
 }
 
 .mainBlock {
@@ -34,27 +40,43 @@
     justify-content: flex-start;
 }
 
-.productsGrid {
-    flex: 1;
+.gridFrame {
+    position: relative;
     width: 100%;
-    min-height: 250px;
+    min-height: 520px;
+}
+
+.productsGrid {
+    width: 100%;
+    min-height: 520px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 22px;
+    align-content: start;
 }
 
 .emptyCard {
+    grid-column: 1 / -1;
     background: #f7f7fa;
     border-radius: 14px;
     min-height: 240px;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #aaa;
     font-size: 19px;
-    position: relative;
-    grid-column: 1 / -1;
+    margin-top: 0;
     border: 1px solid #eceef5;
+    box-sizing: border-box;
+}
+
+.statusCard {
+    grid-column: 1 / -1;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .notFound {
@@ -159,6 +181,7 @@
     flex-direction: column;
     gap: 10px;
     box-shadow: 0 1px 12px rgba(16, 24, 40, 0.04);
+    min-width: 0;
 }
 
 .skeletonImg {
@@ -217,12 +240,18 @@
     .sidebarBlock {
         width: 100%;
         min-width: 0;
+        max-width: none;
         margin-bottom: 12px;
     }
 
     .productsGrid {
         grid-template-columns: repeat(2, 1fr);
         gap: 13px;
+    }
+
+    .gridFrame,
+    .productsGrid {
+        min-height: 320px;
     }
 
     .catalogWrapper {
@@ -251,8 +280,9 @@
 
 .catalogHead {
     display: flex;
+    width: 100%;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 14px;
     margin-bottom: 22px;
 }
