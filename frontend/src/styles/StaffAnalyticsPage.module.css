@@ -6,7 +6,7 @@
 .page {
     width: 100%;
     margin: 0;
-    padding: 28px 24px 48px;
+    padding: 24px 22px 40px;
     background: #f6f7fb;
 }
 
@@ -20,11 +20,11 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 18px;
-    padding: 24px 26px;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding: 20px 22px;
     border: 1px solid #e6e8ef;
-    border-radius: 28px;
+    border-radius: 24px;
     background: #fff;
     box-shadow: 0 12px 34px rgba(16, 24, 40, 0.06);
 }
@@ -35,7 +35,7 @@
 
 .title {
     margin: 0;
-    font-size: 34px;
+    font-size: 30px;
     line-height: 1;
     font-weight: 900;
     letter-spacing: -0.03em;
@@ -43,15 +43,15 @@
 }
 
 .sub {
-    margin-top: 8px;
-    font-size: 13px;
+    margin-top: 6px;
+    font-size: 12px;
     color: #6b7280;
     font-weight: 700;
 }
 
 .headRight {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
@@ -59,13 +59,13 @@
 .filters {
     display: flex;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
 
 .filterLabel {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     color: #6b7280;
 }
@@ -74,13 +74,13 @@
 .btnLight,
 .btnGhost,
 .periodButton {
-    height: 40px;
-    border-radius: 14px;
+    height: 38px;
+    border-radius: 12px;
     border: 1px solid #e6e8ef;
     background: #fff;
     color: #111827;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     outline: none;
 }
 
@@ -98,7 +98,7 @@
 
 .btnLight,
 .btnGhost {
-    padding: 0 16px;
+    padding: 0 14px;
     cursor: pointer;
     white-space: nowrap;
 }
@@ -114,13 +114,13 @@
 }
 
 .notice {
-    border-radius: 18px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 12px 14px;
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
 .noticeErr {
@@ -130,32 +130,28 @@
 }
 
 .summaryGrid,
-.operationGrid,
-.contentGrid {
-    margin-top: 16px;
+.contentColumns,
+.recentSection {
+    margin-top: 14px;
 }
 
 .summaryGrid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.operationGrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
 }
 
 .dashboardZone {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-    gap: 16px;
+    gap: 14px;
     align-items: start;
 }
 
 .dashboardMain,
 .dashboardSide,
+.contentColumnMain,
+.contentColumnSide,
 .attentionStack,
 .productsList,
 .recentList,
@@ -164,14 +160,31 @@
 .cityList {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
-.contentGrid {
+.operationDock {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.contentColumns {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    gap: 14px;
     align-items: start;
+}
+
+.contentColumnMain,
+.contentColumnSide {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.recentSection {
+    display: block;
 }
 
 .overviewCard,
@@ -180,21 +193,21 @@
 .panel {
     background: #fff;
     border: 1px solid #e6e8ef;
-    border-radius: 22px;
+    border-radius: 18px;
     box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
 }
 
 .overviewCard,
 .healthCard {
-    padding: 18px;
-    min-height: 124px;
+    padding: 15px;
+    min-height: 108px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
 .panel {
-    padding: 18px;
+    padding: 15px;
     min-width: 0;
     overflow: hidden;
 }
@@ -209,7 +222,7 @@
 
 .overviewLabel,
 .healthLabel {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     color: #6b7280;
     text-transform: uppercase;
@@ -218,7 +231,7 @@
 
 .overviewValue,
 .healthValue {
-    font-size: 26px;
+    font-size: 22px;
     line-height: 1.05;
     font-weight: 900;
     color: #111827;
@@ -226,25 +239,81 @@
 
 .overviewNote,
 .healthNote {
-    font-size: 12px;
+    font-size: 11px;
     color: #6b7280;
     font-weight: 700;
 }
 
 .attentionCard {
-    padding: 16px 18px;
+    padding: 14px 15px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+}
+
+.operationMiniCard {
+    padding: 12px 13px;
+    min-height: 84px;
+    border: 1px solid #e6e8ef;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.operationMiniLabel {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.operationMiniValue {
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 900;
+    color: #111827;
+}
+
+.operationMiniNote {
+    font-size: 10px;
+    line-height: 1.35;
+    font-weight: 700;
+    color: #6b7280;
+}
+
+.operationNew {
+    background: #fff7ed;
+    border-color: #f5c892;
+    color: #9a5b16;
+}
+
+.operationPaid {
+    background: #eff6ff;
+    border-color: #b7d3f6;
+    color: #2c69b0;
+}
+
+.operationShipped {
+    background: #eefbf6;
+    border-color: #b7e8d2;
+    color: #1c7a5a;
+}
+
+.operationCompleted {
+    background: #eef8f0;
+    border-color: #b8dfc2;
+    color: #2f7d43;
 }
 
 .attentionLabel {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
 }
 
 .attentionValue {
-    font-size: 28px;
+    font-size: 24px;
     line-height: 1;
     font-weight: 900;
 }
@@ -276,19 +345,19 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
 .panelTitle {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 900;
     color: #111827;
 }
 
 .panelHint {
-    margin-top: 4px;
-    font-size: 12px;
+    margin-top: 3px;
+    font-size: 11px;
     font-weight: 700;
     color: #6b7280;
 }
@@ -296,15 +365,15 @@
 .inlineLegend {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
 .inlineLegendItem {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    gap: 6px;
+    font-size: 11px;
     font-weight: 800;
     color: #6b7280;
 }
@@ -322,14 +391,14 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .periodButton {
     min-width: 220px;
     height: auto;
-    min-height: 40px;
-    padding: 10px 12px;
+    min-height: 38px;
+    padding: 8px 11px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -340,7 +409,7 @@
 }
 
 .periodButtonMeta {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: #6b7280;
 }
@@ -351,15 +420,15 @@
     right: 0;
     z-index: 20;
     width: 320px;
-    padding: 14px;
-    border-radius: 18px;
+    padding: 12px;
+    border-radius: 16px;
     border: 1px solid #e6e8ef;
     background: #fff;
     box-shadow: 0 18px 42px rgba(16, 24, 40, 0.14);
 }
 
 .periodPopoverTitle {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
     color: #111827;
     margin-bottom: 10px;
@@ -368,17 +437,17 @@
 .periodPresetGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
 }
 
 .periodPreset {
-    min-height: 40px;
-    padding: 0 12px;
-    border-radius: 12px;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 10px;
     border: 1px solid #e6e8ef;
     background: #fff;
     color: #111827;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     cursor: pointer;
 }
@@ -392,42 +461,42 @@
 .periodDivider {
     height: 1px;
     background: #eef2f7;
-    margin: 14px 0;
+    margin: 12px 0;
 }
 
 .periodDateGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
 }
 
 .periodActions {
-    margin-top: 12px;
+    margin-top: 10px;
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 6px;
 }
 
 .chartSurface {
     width: 100%;
-    padding: 8px 8px 2px;
-    border-radius: 22px;
+    padding: 6px 6px 2px;
+    border-radius: 18px;
     background: linear-gradient(180deg, #f8fafc 0%, #f3f6fa 100%);
     border: 1px solid #eef2f7;
 }
 
 .chartTooltip {
     min-width: 180px;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 10px;
+    border-radius: 12px;
     border: 1px solid #e6e8ef;
     background: rgba(255, 255, 255, 0.97);
     box-shadow: 0 14px 28px rgba(16, 24, 40, 0.12);
 }
 
 .chartTooltipTitle {
-    margin-bottom: 8px;
-    font-size: 12px;
+    margin-bottom: 6px;
+    font-size: 11px;
     font-weight: 900;
     color: #111827;
 }
@@ -435,22 +504,22 @@
 .chartTooltipList {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .chartTooltipRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    font-size: 12px;
+    gap: 10px;
+    font-size: 11px;
     color: #111827;
 }
 
 .chartTooltipName {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
 }
 
@@ -464,50 +533,51 @@
 }
 
 .chartSkeleton {
-    height: 252px;
-}
-
-.chartSkeletonSmall {
     height: 220px;
 }
 
+.chartSkeletonSmall {
+    height: 196px;
+}
+
 .rowSkeleton {
-    height: 64px;
+    height: 56px;
 }
 
 .emptyState {
-    min-height: 160px;
+    min-height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     border: 1px dashed #d6dbe7;
-    border-radius: 18px;
+    border-radius: 16px;
     color: #6b7280;
     font-weight: 700;
     background: #fafbfc;
-    padding: 24px;
+    padding: 18px;
+    font-size: 12px;
 }
 
 .funnelStep {
-    padding: 14px;
-    border-radius: 18px;
+    padding: 12px;
+    border-radius: 16px;
     border: 1px solid #eef0f4;
     background: #fbfcfe;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .funnelStepHead {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 }
 
 .funnelStepIndex {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
     color: #6b7280;
     text-transform: uppercase;
@@ -515,21 +585,21 @@
 }
 
 .funnelStepTitle {
-    margin-top: 4px;
-    font-size: 15px;
+    margin-top: 3px;
+    font-size: 14px;
     font-weight: 900;
     color: #111827;
 }
 
 .funnelStepValue {
-    font-size: 22px;
+    font-size: 19px;
     line-height: 1;
     font-weight: 900;
     color: #111827;
 }
 
 .funnelTrack {
-    height: 10px;
+    height: 8px;
     border-radius: 999px;
     background: #eef2f7;
     overflow: hidden;
@@ -545,9 +615,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: #6b7280;
 }
@@ -569,12 +639,12 @@
 .doubleColumnCompact {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 12px;
 }
 
 .subSectionTitle {
-    margin-bottom: 10px;
-    font-size: 13px;
+    margin-bottom: 8px;
+    font-size: 12px;
     font-weight: 900;
     color: #111827;
 }
@@ -589,35 +659,35 @@
 }
 
 .miniRow {
-    min-height: 40px;
-    padding: 0 12px;
+    min-height: 36px;
+    padding: 0 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    font-size: 13px;
+    gap: 8px;
+    font-size: 12px;
     color: #111827;
 }
 
 .miniLabel {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .cityRow {
-    min-height: 68px;
-    padding: 12px 14px;
+    min-height: 60px;
+    padding: 10px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 }
 
 .cityName,
 .productName,
 .recentId {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     color: #111827;
 }
@@ -625,38 +695,38 @@
 .citySub,
 .productSub,
 .recentMeta {
-    margin-top: 4px;
-    font-size: 12px;
+    margin-top: 3px;
+    font-size: 11px;
     color: #6b7280;
     font-weight: 700;
 }
 
 .cityRevenue,
 .recentTotal {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     color: #111827;
     text-align: right;
 }
 
 .productRow {
-    min-height: 72px;
-    padding: 12px;
+    min-height: 64px;
+    padding: 10px;
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr) auto;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
 }
 
 .productRank {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border-radius: 999px;
     background: #f3f4f6;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 900;
     color: #111827;
 }
@@ -678,17 +748,17 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
-    font-size: 13px;
+    gap: 3px;
+    font-size: 12px;
     color: #111827;
 }
 
 .recentRow {
-    min-height: 76px;
-    padding: 12px 14px;
+    min-height: 68px;
+    padding: 10px 12px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     cursor: pointer;
     transition: background 0.12s ease, border-color 0.12s ease;
@@ -704,15 +774,15 @@
 }
 
 .recentStatusBadge {
-    min-width: 96px;
-    height: 34px;
-    padding: 0 12px;
+    min-width: 88px;
+    height: 30px;
+    padding: 0 10px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
 }
 
@@ -730,13 +800,16 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .operationGrid,
-    .contentGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .contentColumns {
+        grid-template-columns: 1fr;
     }
 
     .dashboardZone {
         grid-template-columns: 1fr;
+    }
+
+    .operationDock {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .panelSpanTwo,
@@ -762,8 +835,8 @@
     }
 
     .summaryGrid,
-    .operationGrid,
-    .contentGrid {
+    .operationDock,
+    .contentColumns {
         grid-template-columns: 1fr;
     }
 

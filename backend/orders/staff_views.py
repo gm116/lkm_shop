@@ -9,7 +9,7 @@ from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncMont
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
-from .models import Order
+from .models import Order, OrderItem
 from .permissions import IsStaffOrWarehouseGroup
 from .staff_serializers import StaffOrderStatusUpdateSerializer
 from .serializers import serialize_order
@@ -132,16 +132,19 @@ def _normalize_bucket_value(value):
     return value
 
 
-def _build_timeline_series(orders_qs, date_from, date_to):
+def _build_timeline_series(orders_qs, paid_payments_qs, date_from, date_to):
     days = (date_to - date_from).days + 1
     granularity = _resolve_granularity(days)
 
     if granularity == 'day':
         trunc = TruncDate('created_at')
+        payment_trunc = TruncDate('paid_at')
     elif granularity == 'week':
         trunc = TruncWeek('created_at')
+        payment_trunc = TruncWeek('paid_at')
     else:
         trunc = TruncMonth('created_at')
+        payment_trunc = TruncMonth('paid_at')
 
     raw_series = {
         _normalize_bucket_value(row['bucket']): row
@@ -172,6 +175,19 @@ def _build_timeline_series(orders_qs, date_from, date_to):
         )
     }
 
+    paid_series = {
+        _normalize_bucket_value(row['bucket']): row['paid_revenue']
+        for row in (
+            paid_payments_qs
+            .annotate(bucket=payment_trunc)
+            .values('bucket')
+            .annotate(
+                paid_revenue=Coalesce(Sum('amount_value'), 0, output_field=DecimalField(max_digits=12, decimal_places=2))
+            )
+            .order_by('bucket')
+        )
+    }
+
     series = []
     for bucket_start in _bucket_starts(date_from, date_to, granularity):
         bucket_end = _bucket_end(bucket_start, date_to, granularity)
@@ -188,7 +204,7 @@ def _build_timeline_series(orders_qs, date_from, date_to):
             'label': _period_label(bucket_start, bucket_end, granularity),
             'orders': orders,
             'revenue': row.get('revenue', 0) or 0,
-            'paid_revenue': row.get('paid_revenue', 0) or 0,
+            'paid_revenue': paid_series.get(bucket_start, 0) or 0,
             'delivered_revenue': row.get('delivered_revenue', 0) or 0,
             'paid_orders': row.get('paid_orders', 0) or 0,
             'shipped_orders': row.get('shipped_orders', 0) or 0,
@@ -202,18 +218,16 @@ def _build_timeline_series(orders_qs, date_from, date_to):
     return granularity, series
 
 
-def _build_funnel(overview):
-    delivered = overview['completed_total'] or 0
-    shipped = overview['shipped_total'] or 0
-    paid = overview['ready_to_ship'] or 0
-    new_orders = overview['pending_assembly'] or 0
-    canceled = overview['canceled_total'] or 0
+def _build_funnel(orders_qs):
+    total_created = orders_qs.count()
+    paid = orders_qs.filter(status__in=['paid', 'shipped', 'completed']).count()
+    shipped = orders_qs.filter(status__in=['shipped', 'completed']).count()
+    delivered = orders_qs.filter(status='completed').count()
     return [
-        {'key': 'new', 'label': 'Новые', 'value': new_orders},
+        {'key': 'new', 'label': 'Созданы', 'value': total_created},
         {'key': 'paid', 'label': 'Оплачены', 'value': paid},
         {'key': 'shipped', 'label': 'Отгружены', 'value': shipped},
         {'key': 'completed', 'label': 'Доставлены', 'value': delivered},
-        {'key': 'canceled', 'label': 'Отменены', 'value': canceled},
     ]
 
 
@@ -302,6 +316,11 @@ class StaffAnalyticsView(APIView):
 
         orders_qs = Order.objects.filter(created_at__gte=start, created_at__lte=end)
         payments_qs = Payment.objects.filter(created_at__gte=start, created_at__lte=end)
+        paid_payments_qs = Payment.objects.filter(
+            status=Payment.Status.SUCCEEDED,
+            paid_at__gte=start,
+            paid_at__lte=end,
+        )
 
         overview = orders_qs.aggregate(
             orders_total=Count('id'),
@@ -312,13 +331,14 @@ class StaffAnalyticsView(APIView):
             shipped_total=Count('id', filter=Q(status='shipped')),
             completed_total=Count('id', filter=Q(status='completed')),
             canceled_total=Count('id', filter=Q(status='canceled')),
-            total_items=Coalesce(Sum('items__quantity'), 0),
         )
 
-        successful_statuses = ['paid', 'shipped', 'completed']
-        successful_orders = orders_qs.filter(status__in=successful_statuses)
-        paid_revenue = successful_orders.aggregate(
-            paid_revenue=Coalesce(Sum('total_amount'), 0, output_field=DecimalField(max_digits=12, decimal_places=2))
+        total_items = OrderItem.objects.filter(order__in=orders_qs).aggregate(
+            total_items=Coalesce(Sum('quantity'), 0)
+        )['total_items']
+
+        paid_revenue = paid_payments_qs.aggregate(
+            paid_revenue=Coalesce(Sum('amount_value'), 0, output_field=DecimalField(max_digits=12, decimal_places=2))
         )['paid_revenue']
         delivered_revenue = orders_qs.filter(status='completed').aggregate(
             delivered_revenue=Coalesce(Sum('total_amount'), 0, output_field=DecimalField(max_digits=12, decimal_places=2))
@@ -336,7 +356,7 @@ class StaffAnalyticsView(APIView):
         cancellation_rate = round((canceled_total / orders_total) * 100, 1) if orders_total else 0
         payment_success_rate = round((succeeded_payments / payments_total) * 100, 1) if payments_total else 0
 
-        granularity, timeline = _build_timeline_series(orders_qs, date_from, date_to)
+        granularity, timeline = _build_timeline_series(orders_qs, paid_payments_qs, date_from, date_to)
 
         status_breakdown = [
             {
@@ -387,18 +407,18 @@ class StaffAnalyticsView(APIView):
 
         attention = [
             {
-                'key': 'delivered_revenue',
-                'label': 'Доставленная выручка',
-                'value': delivered_revenue or 0,
+                'key': 'gross_revenue',
+                'label': 'Заказано на сумму',
+                'value': overview['gross_revenue'] or 0,
                 'format': 'money',
-                'tone': 'info',
+                'tone': 'neutral',
             },
             {
-                'key': 'active_orders',
-                'label': 'Активные заказы',
-                'value': (overview['pending_assembly'] or 0) + (overview['ready_to_ship'] or 0) + shipped_total,
-                'format': 'count',
-                'tone': 'warning',
+                'key': 'paid_revenue',
+                'label': 'Оплачено на сумму',
+                'value': paid_revenue or 0,
+                'format': 'money',
+                'tone': 'info',
             },
             {
                 'key': 'payment_success_rate',
@@ -429,7 +449,7 @@ class StaffAnalyticsView(APIView):
                 'paid_revenue': paid_revenue or 0,
                 'delivered_revenue': delivered_revenue or 0,
                 'average_order': overview['average_order'] or 0,
-                'avg_items_per_order': round((float(overview['total_items'] or 0) / orders_total), 2) if orders_total else 0,
+                'avg_items_per_order': round((float(total_items or 0) / orders_total), 2) if orders_total else 0,
                 'pending_assembly': overview['pending_assembly'] or 0,
                 'ready_to_ship': overview['ready_to_ship'] or 0,
                 'shipped_total': shipped_total,
@@ -445,7 +465,7 @@ class StaffAnalyticsView(APIView):
             'delivery_breakdown': delivery_breakdown,
             'payment_breakdown': payment_breakdown,
             'timeline': timeline,
-            'funnel': _build_funnel(overview),
+            'funnel': _build_funnel(orders_qs),
             'weekday_breakdown': _build_weekday_breakdown(orders_qs),
             'city_breakdown': _build_city_breakdown(orders_qs),
             'top_products': [

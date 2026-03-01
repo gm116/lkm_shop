@@ -175,6 +175,14 @@ function toneClass(tone, stylesMap) {
     return stylesMap.toneNeutral;
 }
 
+function operationCardClass(key, stylesMap) {
+    if (key === 'new') return stylesMap.operationNew;
+    if (key === 'ready') return stylesMap.operationPaid;
+    if (key === 'shipped') return stylesMap.operationShipped;
+    if (key === 'completed') return stylesMap.operationCompleted;
+    return '';
+}
+
 function formatMetricValue(value, kind) {
     if (kind === 'money') return `${formatMoney(value)} ₽`;
     if (kind === 'percent') return formatPercent(value);
@@ -312,19 +320,19 @@ export default function StaffAnalyticsPage() {
 
     const summaryCards = [
         {
-            label: 'Заказы',
+            label: 'Создано заказов',
             value: formatNumber(overview.orders_total),
-            note: `${formatNumber(period.days)} ${pluralize(period.days, 'день', 'дня', 'дней')} в отчете`,
+            note: `${formatNumber(period.days)} ${pluralize(period.days, 'день', 'дня', 'дней')} по дате создания`,
         },
         {
-            label: 'Оборот',
+            label: 'Заказано на сумму',
             value: `${formatMoney(overview.gross_revenue)} ₽`,
-            note: 'Общая выручка за выбранный период',
+            note: 'Сумма всех заказов, созданных в периоде',
         },
         {
-            label: 'Оплаченная выручка',
+            label: 'Оплачено на сумму',
             value: `${formatMoney(overview.paid_revenue)} ₽`,
-            note: 'Заказы с подтвержденной оплатой',
+            note: 'Успешные платежи по дате оплаты',
         },
         {
             label: 'Средний чек',
@@ -344,10 +352,10 @@ export default function StaffAnalyticsPage() {
     ];
 
     const operationCards = [
-        {label: 'Новые', value: formatNumber(overview.pending_assembly), note: 'Требуют сборки'},
-        {label: 'К отгрузке', value: formatNumber(overview.ready_to_ship), note: 'Оплачены и готовы к передаче'},
-        {label: 'В пути', value: formatNumber(overview.shipped_total), note: 'Переданы в доставку'},
-        {label: 'Доставлены', value: formatNumber(overview.completed_total), note: formatPercent(overview.completion_rate)},
+        {key: 'new', label: 'Новые', value: formatNumber(overview.pending_assembly), note: 'Требуют сборки'},
+        {key: 'ready', label: 'К отгрузке', value: formatNumber(overview.ready_to_ship), note: 'Оплачены и готовы к передаче'},
+        {key: 'shipped', label: 'В пути', value: formatNumber(overview.shipped_total), note: 'Переданы в доставку'},
+        {key: 'completed', label: 'Доставлены', value: formatNumber(overview.completed_total), note: formatPercent(overview.completion_rate)},
     ];
 
     const applyPeriod = (nextFrom, nextTo) => {
@@ -489,13 +497,13 @@ export default function StaffAnalyticsPage() {
                         <section className={styles.panel}>
                             <div className={styles.panelHead}>
                                 <div>
-                                    <div className={styles.panelTitle}>Оборот и оплаченная выручка</div>
-                                    <div className={styles.panelHint}>Темная линия показывает общий оборот, синяя — оплаченные заказы в рублях за тот же период</div>
+                                    <div className={styles.panelTitle}>Заказано и оплачено</div>
+                                    <div className={styles.panelHint}>Темная линия показывает сумму заказов по дате создания, синяя — сумму успешных оплат по дате оплаты</div>
                                 </div>
                                 <div className={styles.inlineLegend}>
                                     <span className={styles.inlineLegendItem}>
                                         <span className={styles.inlineLegendDot} style={{background: '#111827'}}/>
-                                        Оборот
+                                        Заказано на сумму
                                     </span>
                                     <span className={styles.inlineLegendItem}>
                                         <span className={styles.inlineLegendDot} style={{background: '#3b82f6'}}/>
@@ -508,7 +516,7 @@ export default function StaffAnalyticsPage() {
                                 <div className={styles.chartSkeleton}/>
                             ) : timelineDisplay.length ? (
                                 <div className={styles.chartSurface}>
-                                    <ResponsiveContainer width="100%" height={252}>
+                                    <ResponsiveContainer width="100%" height={220}>
                                         <ComposedChart data={timelineDisplay} margin={{top: 8, right: 12, left: 8, bottom: 4}}>
                                             <defs>
                                                 <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
@@ -563,7 +571,7 @@ export default function StaffAnalyticsPage() {
                                 <div className={styles.chartSkeleton}/>
                             ) : timelineDisplay.length ? (
                                 <div className={styles.chartSurface}>
-                                    <ResponsiveContainer width="100%" height={236}>
+                                    <ResponsiveContainer width="100%" height={208}>
                                         <ComposedChart data={timelineDisplay} margin={{top: 8, right: 12, left: 8, bottom: 4}}>
                                             <CartesianGrid stroke="#d6e0ee" strokeDasharray="3 8" vertical={false}/>
                                             <XAxis dataKey="axisLabel" tickLine={false} axisLine={false} minTickGap={18} dy={8}/>
@@ -597,6 +605,19 @@ export default function StaffAnalyticsPage() {
                                 <EmptyPanel text="За выбранный период пока нет данных"/>
                             )}
                         </section>
+
+                        <div className={styles.operationDock}>
+                            {operationCards.map((card) => (
+                                <div
+                                    className={`${styles.operationMiniCard} ${operationCardClass(card.key, styles)}`}
+                                    key={card.key}
+                                >
+                                    <div className={styles.operationMiniLabel}>{card.label}</div>
+                                    <div className={styles.operationMiniValue}>{card.value}</div>
+                                    <div className={styles.operationMiniNote}>{card.note}</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <aside className={styles.dashboardSide}>
@@ -621,14 +642,14 @@ export default function StaffAnalyticsPage() {
                             <div className={styles.panelHead}>
                                 <div>
                                     <div className={styles.panelTitle}>Состояние заказов</div>
-                                    <div className={styles.panelHint}>Текущее распределение по этапам обработки</div>
+                                    <div className={styles.panelHint}>Это текущий срез по статусам, а не количество созданных заказов за период</div>
                                 </div>
                             </div>
 
                             {loading ? (
                                 <div className={styles.chartSkeletonSmall}/>
                             ) : statusBreakdown.length ? (
-                                <ResponsiveContainer width="100%" height={250}>
+                                <ResponsiveContainer width="100%" height={224}>
                                     <BarChart data={statusBreakdown} layout="vertical" margin={{top: 8, right: 8, left: 8, bottom: 8}}>
                                         <CartesianGrid stroke="#eceff4" horizontal={false}/>
                                         <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false}/>
@@ -658,187 +679,192 @@ export default function StaffAnalyticsPage() {
                     ))}
                 </div>
 
-                <div className={styles.operationGrid}>
-                    {operationCards.map((card) => (
-                        <div className={styles.healthCard} key={card.label}>
-                            <div className={styles.healthLabel}>{card.label}</div>
-                            <div className={styles.healthValue}>{card.value}</div>
-                            <div className={styles.healthNote}>{card.note}</div>
-                        </div>
-                    ))}
-                </div>
-
-                <section className={styles.contentGrid}>
-                    <section className={`${styles.panel} ${styles.panelSpanTwo}`}>
-                        <div className={styles.panelHead}>
-                            <div>
-                                <div className={styles.panelTitle}>Топ товаров</div>
-                                <div className={styles.panelHint}>Лидеры по количеству продаж и выручке</div>
+                <section className={styles.contentColumns}>
+                    <div className={styles.contentColumnMain}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHead}>
+                                <div>
+                                    <div className={styles.panelTitle}>Топ товаров</div>
+                                    <div className={styles.panelHint}>Лидеры по количеству продаж и выручке</div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className={styles.productsList}>
-                            {(loading ? Array.from({length: 5}, (_, i) => ({name: `product-${i}`})) : topProducts).map((product, index) => (
-                                <div className={styles.productRow} key={product.product_id || product.name || index}>
-                                    {loading ? (
-                                        <div className={styles.rowSkeleton}/>
-                                    ) : (
-                                        <>
-                                            <div className={styles.productRank}>{index + 1}</div>
-                                            <div className={styles.productMeta}>
-                                                <div className={styles.productName}>{product.name}</div>
-                                                <div className={styles.productSub}>
-                                                    {formatNumber(product.orders_count)} {pluralize(product.orders_count, 'заказ', 'заказа', 'заказов')}
+                            <div className={styles.productsList}>
+                                {(loading ? Array.from({length: 5}, (_, i) => ({name: `product-${i}`})) : topProducts).map((product, index) => (
+                                    <div className={styles.productRow} key={product.product_id || product.name || index}>
+                                        {loading ? (
+                                            <div className={styles.rowSkeleton}/>
+                                        ) : (
+                                            <>
+                                                <div className={styles.productRank}>{index + 1}</div>
+                                                <div className={styles.productMeta}>
+                                                    <div className={styles.productName}>{product.name}</div>
+                                                    <div className={styles.productSub}>
+                                                        {formatNumber(product.orders_count)} {pluralize(product.orders_count, 'заказ', 'заказа', 'заказов')}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className={styles.productStats}>
-                                                <div>{formatNumber(product.units)} шт.</div>
-                                                <strong>{formatMoney(product.revenue)} ₽</strong>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <section className={styles.panel}>
-                        <div className={styles.panelHead}>
-                            <div>
-                                <div className={styles.panelTitle}>Воронка обработки</div>
-                                <div className={styles.panelHint}>Показывает, сколько заказов доходит до каждого этапа и где поток теряется</div>
-                            </div>
-                        </div>
-                        <div className={styles.funnelList}>
-                            {(loading ? Array.from({length: 5}, (_, index) => ({key: index})) : funnelDisplay).map((item, index) => (
-                                <div className={styles.funnelStep} key={item.key}>
-                                    {loading ? (
-                                        <div className={styles.rowSkeleton}/>
-                                    ) : (
-                                        <>
-                                            <div className={styles.funnelStepHead}>
-                                                <div>
-                                                    <div className={styles.funnelStepIndex}>Этап {index + 1}</div>
-                                                    <div className={styles.funnelStepTitle}>{item.label}</div>
+                                                <div className={styles.productStats}>
+                                                    <div>{formatNumber(product.units)} шт.</div>
+                                                    <strong>{formatMoney(product.revenue)} ₽</strong>
                                                 </div>
-                                                <div className={styles.funnelStepValue}>{formatNumber(item.current)}</div>
-                                            </div>
-                                            <div className={styles.funnelTrack}>
-                                                <div
-                                                    className={styles.funnelFill}
-                                                    style={{width: `${Math.max(8, item.share_total)}%`}}
-                                                />
-                                            </div>
-                                            <div className={styles.funnelMetaRow}>
-                                                <span>{formatPercent(item.share_total)} от общего числа заказов</span>
-                                                <span>{index === 0 ? 'Базовый этап' : `${formatPercent(item.share_prev)} от предыдущего этапа`}</span>
-                                            </div>
-                                            {index > 0 ? (
-                                                <div className={styles.funnelDropOff}>
-                                                    Потеря между этапами: {formatPercent(item.drop_off)}
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <section className={styles.panel}>
-                        <div className={styles.panelHead}>
-                            <div>
-                                <div className={styles.panelTitle}>По дням недели</div>
-                                <div className={styles.panelHint}>В какие дни поток заказов выше обычного</div>
-                            </div>
-                        </div>
-
-                        {loading ? (
-                            <div className={styles.chartSkeletonSmall}/>
-                        ) : weekdayBreakdown.length ? (
-                            <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={weekdayBreakdown} margin={{top: 8, right: 8, left: 0, bottom: 8}}>
-                                    <CartesianGrid stroke="#eceff4" vertical={false}/>
-                                    <XAxis dataKey="label" tickLine={false} axisLine={false}/>
-                                    <YAxis tickLine={false} axisLine={false} allowDecimals={false}/>
-                                    <Tooltip content={<CustomTooltip/>}/>
-                                    <Bar dataKey="count" name="Заказы" fill="#111827" radius={[8, 8, 0, 0]} isAnimationActive={false}/>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <EmptyPanel text="Нет данных по дням недели"/>
-                        )}
-                    </section>
-
-                    <section className={styles.panel}>
-                        <div className={styles.panelHead}>
-                            <div>
-                                <div className={styles.panelTitle}>Доставка и оплаты</div>
-                                <div className={styles.panelHint}>Какие способы доставки и статусы оплат преобладают</div>
-                            </div>
-                        </div>
-                        <div className={styles.doubleColumnCompact}>
-                            <div>
-                                <div className={styles.subSectionTitle}>Доставка</div>
-                                <div className={styles.miniList}>
-                                    {deliveryBreakdown.map((item, index) => (
-                                        <div className={styles.miniRow} key={item.key}>
-                                            <span className={styles.miniLabel}>
-                                                <span className={styles.legendDot} style={{background: DELIVERY_COLORS[index % DELIVERY_COLORS.length]}}/>
-                                                {item.label}
-                                            </span>
-                                            <strong>{formatNumber(item.count)} · {formatPercent(item.share)}</strong>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div className={styles.subSectionTitle}>Платежи</div>
-                                <div className={styles.miniList}>
-                                    {paymentBreakdown.map((item, index) => (
-                                        <div className={styles.miniRow} key={item.key}>
-                                            <span className={styles.miniLabel}>
-                                                <span className={styles.legendDot} style={{background: PAYMENT_COLORS[index % PAYMENT_COLORS.length]}}/>
-                                                {item.label}
-                                            </span>
-                                            <strong>{formatNumber(item.count)} · {formatPercent(item.share)}</strong>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className={styles.panel}>
-                        <div className={styles.panelHead}>
-                            <div>
-                                <div className={styles.panelTitle}>Города</div>
-                                <div className={styles.panelHint}>Откуда приходит больше заказов и выручки</div>
-                            </div>
-                        </div>
-                        <div className={styles.cityList}>
-                            {loading ? (
-                                Array.from({length: 4}, (_, index) => <div key={index} className={styles.rowSkeleton}/>)
-                            ) : cityBreakdown.length ? (
-                                cityBreakdown.map((item) => (
-                                    <div className={styles.cityRow} key={item.city}>
-                                        <div>
-                                            <div className={styles.cityName}>{item.city}</div>
-                                            <div className={styles.citySub}>
-                                                {formatNumber(item.orders)} {pluralize(item.orders, 'заказ', 'заказа', 'заказов')}
-                                            </div>
-                                        </div>
-                                        <div className={styles.cityRevenue}>{formatMoney(item.revenue)} ₽</div>
+                                            </>
+                                        )}
                                     </div>
-                                ))
-                            ) : (
-                                <EmptyPanel text="Нет данных по городам"/>
-                            )}
-                        </div>
-                    </section>
+                                ))}
+                            </div>
+                        </section>
 
-                    <section className={`${styles.panel} ${styles.panelSpanThree}`}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHead}>
+                                <div>
+                                    <div className={styles.panelTitle}>Доставка и оплаты</div>
+                                    <div className={styles.panelHint}>Какие способы доставки и статусы оплат преобладают</div>
+                                </div>
+                            </div>
+                            <div className={styles.doubleColumnCompact}>
+                                <div>
+                                    <div className={styles.subSectionTitle}>Доставка</div>
+                                    <div className={styles.miniList}>
+                                        {deliveryBreakdown.map((item, index) => (
+                                            <div className={styles.miniRow} key={item.key}>
+                                                <span className={styles.miniLabel}>
+                                                    <span className={styles.legendDot} style={{background: DELIVERY_COLORS[index % DELIVERY_COLORS.length]}}/>
+                                                    {item.label}
+                                                </span>
+                                                <strong>{formatNumber(item.count)} · {formatPercent(item.share)}</strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className={styles.subSectionTitle}>Платежи</div>
+                                    <div className={styles.miniList}>
+                                        {paymentBreakdown.map((item, index) => (
+                                            <div className={styles.miniRow} key={item.key}>
+                                                <span className={styles.miniLabel}>
+                                                    <span className={styles.legendDot} style={{background: PAYMENT_COLORS[index % PAYMENT_COLORS.length]}}/>
+                                                    {item.label}
+                                                </span>
+                                                <strong>{formatNumber(item.count)} · {formatPercent(item.share)}</strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHead}>
+                                <div>
+                                    <div className={styles.panelTitle}>Города</div>
+                                    <div className={styles.panelHint}>Откуда приходит больше заказов и выручки</div>
+                                </div>
+                            </div>
+                            <div className={styles.cityList}>
+                                {loading ? (
+                                    Array.from({length: 4}, (_, index) => <div key={index} className={styles.rowSkeleton}/>)
+                                ) : cityBreakdown.length ? (
+                                    cityBreakdown.map((item) => (
+                                        <div className={styles.cityRow} key={item.city}>
+                                            <div>
+                                                <div className={styles.cityName}>{item.city}</div>
+                                                <div className={styles.citySub}>
+                                                    {formatNumber(item.orders)} {pluralize(item.orders, 'заказ', 'заказа', 'заказов')}
+                                                </div>
+                                            </div>
+                                            <div className={styles.cityRevenue}>{formatMoney(item.revenue)} ₽</div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyPanel text="Нет данных по городам"/>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className={styles.contentColumnSide}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHead}>
+                                <div>
+                                    <div className={styles.panelTitle}>Воронка прохождения заказов</div>
+                                    <div className={styles.panelHint}>Накопительная воронка по заказам, созданным за период: сколько из них дошло до оплаты, отгрузки и доставки</div>
+                                </div>
+                            </div>
+                            <div className={styles.funnelList}>
+                                {(loading ? Array.from({length: 5}, (_, index) => ({key: index})) : funnelDisplay).map((item, index) => (
+                                    <div className={styles.funnelStep} key={item.key}>
+                                        {loading ? (
+                                            <div className={styles.rowSkeleton}/>
+                                        ) : (
+                                            <>
+                                                <div className={styles.funnelStepHead}>
+                                                    <div>
+                                                        <div className={styles.funnelStepIndex}>Этап {index + 1}</div>
+                                                        <div className={styles.funnelStepTitle}>{item.label}</div>
+                                                    </div>
+                                                    <div className={styles.funnelStepValue}>{formatNumber(item.current)}</div>
+                                                </div>
+                                                <div className={styles.funnelTrack}>
+                                                    <div
+                                                        className={styles.funnelFill}
+                                                        style={{width: `${Math.max(8, item.share_total)}%`}}
+                                                    />
+                                                </div>
+                                                <div className={styles.funnelMetaRow}>
+                                                    {index === 0 ? (
+                                                        <>
+                                                            <span>База расчета воронки</span>
+                                                            <span>Все созданные за период заказы</span>
+                                                        </>
+                                                    ) : index === 1 ? (
+                                                        <>
+                                                            <span>Конверсия в оплату: {formatPercent(item.share_total)}</span>
+                                                            <span>Не оплачено: {formatPercent(item.drop_off)}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>{formatPercent(item.share_total)} от всех созданных заказов</span>
+                                                            <span>{formatPercent(item.share_prev)} дошло от предыдущего этапа</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHead}>
+                                <div>
+                                    <div className={styles.panelTitle}>По дням недели</div>
+                                    <div className={styles.panelHint}>В какие дни поток заказов выше обычного</div>
+                                </div>
+                            </div>
+
+                            {loading ? (
+                                <div className={styles.chartSkeletonSmall}/>
+                            ) : weekdayBreakdown.length ? (
+                                <ResponsiveContainer width="100%" height={196}>
+                                    <BarChart data={weekdayBreakdown} margin={{top: 8, right: 8, left: -12, bottom: 8}}>
+                                        <CartesianGrid stroke="#eceff4" vertical={false}/>
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false}/>
+                                        <YAxis hide width={0}/>
+                                        <Tooltip content={<CustomTooltip/>}/>
+                                        <Bar dataKey="count" name="Заказы" fill="#111827" radius={[8, 8, 0, 0]} isAnimationActive={false}/>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <EmptyPanel text="Нет данных по дням недели"/>
+                            )}
+                        </section>
+                    </div>
+                </section>
+
+                <section className={styles.recentSection}>
+                    <section className={styles.panel}>
                         <div className={styles.panelHead}>
                             <div>
                                 <div className={styles.panelTitle}>Последние заказы</div>
