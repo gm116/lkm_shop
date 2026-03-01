@@ -1,0 +1,10 @@
+.git
+.idea
+.DS_Store
+.venv
+backend/.venv
+backend/__pycache__
+frontend/node_modules
+database/data
+**/__pycache__
+**/*.pyc

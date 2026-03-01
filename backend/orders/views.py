@@ -5,8 +5,8 @@ from rest_framework import status, permissions
 from rest_framework.exceptions import ValidationError
 
 from cart.models import Cart, CartItem
-from catalog.models import Product
-from .models import Order, OrderItem
+from catalog.models import Product, ProductImage
+from .models import Order, OrderItem, OrderStatus
 from .serializers import OrderCreateFromCartSerializer, serialize_order
 
 
@@ -41,9 +41,18 @@ class OrderCreateFromCartView(APIView):
                 product.id: product
                 for product in Product.objects.select_for_update().filter(id__in=product_ids)
             }
+            product_image_map = {}
+            if product_ids:
+                for image in (
+                    ProductImage.objects
+                    .filter(product_id__in=product_ids)
+                    .order_by('product_id', 'sort_order', 'id')
+                ):
+                    product_image_map.setdefault(image.product_id, image.image_url)
 
             order = Order.objects.create(
                 user=request.user,
+                status=OrderStatus.NEW,
 
                 customer_name=data['customer_name'],
                 customer_phone=data['customer_phone'],
@@ -78,6 +87,7 @@ class OrderCreateFromCartView(APIView):
                     order=order,
                     product=product,
                     product_name_snapshot=product.name,
+                    image_url_snapshot=product_image_map.get(product.id, ''),
                     price_snapshot=price,
                     quantity=quantity,
                 )
@@ -105,7 +115,7 @@ class MyOrdersView(APIView):
         orders = (
             Order.objects
             .filter(user=request.user)
-            .prefetch_related('items')
+            .prefetch_related('items', 'payments')
             .order_by('-id')[:50]
         )
 
@@ -119,7 +129,7 @@ class OrderDetailView(APIView):
         try:
             o = (
                 Order.objects
-                .prefetch_related('items')
+                .prefetch_related('items', 'payments')
                 .get(id=order_id, user=request.user)
             )
         except Order.DoesNotExist:

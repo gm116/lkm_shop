@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from payments.models import Payment
 from .models import DeliveryType, Order
 
 
@@ -44,6 +45,7 @@ class OrderItemOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     product_id = serializers.IntegerField(allow_null=True)
     product_name_snapshot = serializers.CharField()
+    image_url_snapshot = serializers.CharField(allow_blank=True)
     price_snapshot = serializers.DecimalField(max_digits=12, decimal_places=2)
     quantity = serializers.IntegerField()
 
@@ -51,6 +53,7 @@ class OrderItemOutSerializer(serializers.Serializer):
 class OrderOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
+    payment_succeeded = serializers.BooleanField()
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
 
     delivery_type = serializers.CharField()
@@ -78,15 +81,25 @@ def serialize_order_item(item):
         'id': item.id,
         'product_id': item.product_id,
         'product_name_snapshot': item.product_name_snapshot,
+        'image_url_snapshot': item.image_url_snapshot,
         'price_snapshot': item.price_snapshot,
         'quantity': item.quantity,
     }
+
+
+def _payment_succeeded(order: Order) -> bool:
+    prefetched = getattr(order, '_prefetched_objects_cache', {}) or {}
+    payments = prefetched.get('payments')
+    if payments is not None:
+        return any(payment.status == Payment.Status.SUCCEEDED for payment in payments)
+    return order.payments.filter(status=Payment.Status.SUCCEEDED).exists()
 
 
 def serialize_order(order: Order, include_customer: bool = False):
     payload = {
         'id': order.id,
         'status': order.status,
+        'payment_succeeded': _payment_succeeded(order),
         'total_amount': order.total_amount,
         'delivery_type': order.delivery_type,
         'delivery_city': order.delivery_city,

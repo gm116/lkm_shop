@@ -14,6 +14,11 @@ from pathlib import Path
 from decouple import config
 from datetime import timedelta
 
+
+def _split_csv(value, default=''):
+    raw = value if value is not None else default
+    return [item.strip() for item in str(raw).split(',') if item.strip()]
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,9 +29,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='default_secret_key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'uncheering-phenomenologically-leroy.ngrok-free.dev']
+ALLOWED_HOSTS = _split_csv(
+    config(
+        'ALLOWED_HOSTS',
+        default='127.0.0.1,localhost,backend,uncheering-phenomenologically-leroy.ngrok-free.dev',
+    )
+)
 
 
 # Application definition
@@ -49,7 +59,9 @@ INSTALLED_APPS = [
 ]
 
 
-YOOKASSA_RETURN_URL = os.getenv('YOOKASSA_RETURN_URL', 'http://localhost:3000/profile')
+YOOKASSA_RETURN_URL = config('YOOKASSA_RETURN_URL', default='http://localhost:3000/profile')
+YOOKASSA_ACCOUNT_ID = config('YOOKASSA_ACCOUNT_ID', default='')
+YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -63,9 +75,12 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
-CSRF_TRUSTED_ORIGINS = [
-    'https://uncheering-phenomenologically-leroy.ngrok-free.dev',
-]
+CSRF_TRUSTED_ORIGINS = _split_csv(
+    config(
+        'CSRF_TRUSTED_ORIGINS',
+        default='http://localhost:3000,http://127.0.0.1:3000,https://uncheering-phenomenologically-leroy.ngrok-free.dev',
+    )
+)
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -92,8 +107,8 @@ DATABASES = {
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
-        'HOST': 'localhost',
-        'PORT': '5544',
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5544'),
     }
 }
 
@@ -136,10 +151,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'https://uncheering-phenomenologically-leroy.ngrok-free.dev'
-]
+CORS_ALLOWED_ORIGINS = _split_csv(
+    config(
+        'CORS_ALLOWED_ORIGINS',
+        default='http://localhost:3000,http://127.0.0.1:3000,https://uncheering-phenomenologically-leroy.ngrok-free.dev',
+    )
+)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

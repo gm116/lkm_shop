@@ -3,8 +3,7 @@ import json
 from decimal import Decimal
 
 import os
-from dotenv import load_dotenv
-load_dotenv()
+from django.conf import settings
 
 from yookassa import Configuration, Payment as YooPayment
 
@@ -25,14 +24,13 @@ def _as_dict(x):
         return {}
 
 def _cfg():
-    Configuration.account_id = os.getenv('YOOKASSA_ACCOUNT_ID')
-    Configuration.secret_key = os.getenv('YOOKASSA_SECRET_KEY')
+    Configuration.account_id = getattr(settings, 'YOOKASSA_ACCOUNT_ID', '') or os.getenv('YOOKASSA_ACCOUNT_ID')
+    Configuration.secret_key = getattr(settings, 'YOOKASSA_SECRET_KEY', '') or os.getenv('YOOKASSA_SECRET_KEY')
 
 
 def create_payment_for_order(*, order_id: int, amount_value: Decimal, description: str, return_url: str):
     _cfg()
     if not Configuration.account_id or not Configuration.secret_key:
-        print(os.getenv('YOOKASSA_ACCOUNT_ID'), os.getenv('YOOKASSA_SECRET_KEY'))
         raise RuntimeError('YOOKASSA credentials are not set')
 
     idempotence_key = uuid.uuid4().hex

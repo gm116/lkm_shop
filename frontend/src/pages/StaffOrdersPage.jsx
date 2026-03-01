@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState, useCallback, useRef} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import styles from '../styles/StaffOrdersPage.module.css';
 import {useAuth} from '../store/authContext';
 
@@ -14,7 +14,7 @@ const PERIOD_PRESETS = [
 
 const STATUS_TABS = [
     {key: 'new', label: 'Новые'},
-    {key: 'paid', label: 'Оплачены'},
+    {key: 'paid', label: 'К сборке'},
     {key: 'shipped', label: 'Отгружены'},
     {key: 'completed', label: 'Доставлены'},
     {key: 'canceled', label: 'Отменены'},
@@ -22,7 +22,7 @@ const STATUS_TABS = [
 ];
 
 const statusLabel = (s) => {
-    if (s === 'new') return 'Новый';
+    if (s === 'new') return 'Ожидает оплаты';
     if (s === 'paid') return 'Оплачен';
     if (s === 'shipped') return 'Отгружен';
     if (s === 'completed') return 'Завершён';
@@ -163,27 +163,51 @@ function itemImage(it, productImageMap) {
 export default function StaffOrdersPage() {
     const {authFetch} = useAuth(); // важно: authFetch должен сам обновлять токены
     const navigate = useNavigate();
+    const location = useLocation();
+    const initialSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
-    const [activeStatus, setActiveStatus] = useState('new');
+    const initialStatus = initialSearchParams.get('status');
+    const initialDateFrom = initialSearchParams.get('dateFrom');
+    const initialDateTo = initialSearchParams.get('dateTo');
+    const initialDateSort = initialSearchParams.get('dateSort');
+
+    const [activeStatus, setActiveStatus] = useState(
+        STATUS_TABS.some((tab) => tab.key === initialStatus) ? initialStatus : 'paid'
+    );
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [orders, setOrders] = useState([]);
 
     const defaultRange = useMemo(() => buildPresetRange(30), []);
-    const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
-    const [dateTo, setDateTo] = useState(defaultRange.dateTo);
-    const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
-    const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
+    const [dateFrom, setDateFrom] = useState(initialDateFrom || defaultRange.dateFrom);
+    const [dateTo, setDateTo] = useState(initialDateTo || defaultRange.dateTo);
+    const [draftDateFrom, setDraftDateFrom] = useState(initialDateFrom || defaultRange.dateFrom);
+    const [draftDateTo, setDraftDateTo] = useState(initialDateTo || defaultRange.dateTo);
     const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
 
     // Сортировка по дате
-    const [dateSort, setDateSort] = useState('desc'); // desc = новые сверху, asc = старые сверху
+    const [dateSort, setDateSort] = useState(initialDateSort === 'asc' ? 'asc' : 'desc'); // desc = новые сверху, asc = старые сверху
 
     // кэш картинок по product_id (строка → url)
     const [productImageMap, setProductImageMap] = useState(() => new Map());
     const inFlightRef = useRef(new Set()); // чтобы не дёргать один и тот же product_id параллельно
     const periodMenuRef = useRef(null);
+
+    const buildListSearch = useCallback((overrides = {}) => {
+        const params = new URLSearchParams();
+        params.set('status', overrides.status ?? activeStatus);
+        params.set('dateFrom', overrides.dateFrom ?? dateFrom);
+        params.set('dateTo', overrides.dateTo ?? dateTo);
+        params.set('dateSort', overrides.dateSort ?? dateSort);
+        return `?${params.toString()}`;
+    }, [activeStatus, dateFrom, dateTo, dateSort]);
+
+    const replaceListUrl = useCallback((overrides = {}) => {
+        const nextSearch = buildListSearch(overrides);
+        const nextUrl = `${location.pathname}${nextSearch}`;
+        window.history.replaceState(window.history.state, '', nextUrl);
+    }, [buildListSearch, location.pathname]);
 
     const loadOrders = useCallback(async (statusKey) => {
         setLoading(true);
@@ -214,6 +238,12 @@ export default function StaffOrdersPage() {
     useEffect(() => {
         loadOrders(activeStatus);
     }, [activeStatus, loadOrders]);
+
+    useEffect(() => {
+        if (!location.search) {
+            replaceListUrl();
+        }
+    }, [location.search, replaceListUrl]);
 
     useEffect(() => {
         if (!isPeriodMenuOpen) return undefined;
@@ -281,6 +311,8 @@ export default function StaffOrdersPage() {
                         return next;
                     });
                 }
+            } catch {
+                // Один неудачный запрос к картинке не должен срывать загрузку остальных превью.
             } finally {
                 inFlightRef.current.delete(key);
             }
@@ -293,7 +325,7 @@ export default function StaffOrdersPage() {
 
             for (let i = 0; i < list.length; i += CONCURRENCY) {
                 const chunk = list.slice(i, i + CONCURRENCY);
-                await Promise.all(chunk.map(fetchOne));
+                await Promise.allSettled(chunk.map(fetchOne));
                 if (cancelled) break;
             }
         };
@@ -333,7 +365,7 @@ export default function StaffOrdersPage() {
     }, [orders, dateFrom, dateTo, dateSort]);
 
     const title = 'Заказы';
-    const sub = activeStatus === 'new' ? 'Новые' : statusLabel(activeStatus);
+    const sub = activeStatus === 'all' ? 'Все' : statusLabel(activeStatus);
     const totalOrders = filteredSortedOrders.length;
 
     const summary = useMemo(() => {
@@ -353,6 +385,7 @@ export default function StaffOrdersPage() {
         setDraftDateFrom(nextFrom);
         setDraftDateTo(nextTo);
         setIsPeriodMenuOpen(false);
+        replaceListUrl({dateFrom: nextFrom, dateTo: nextTo});
     };
 
     const handlePresetSelect = (days) => {
@@ -376,7 +409,12 @@ export default function StaffOrdersPage() {
 
     const openOrder = (id) => {
         if (!id) return;
-        navigate(`/staff/orders/${id}`);
+        const backTo = `${location.pathname}${buildListSearch()}`;
+        navigate(`/staff/orders/${id}?back=${encodeURIComponent(backTo)}`, {
+            state: {
+                backTo,
+            },
+        });
     };
 
     const onRowKeyDown = (e, id) => {
@@ -489,7 +527,11 @@ export default function StaffOrdersPage() {
                                 <button
                                     type="button"
                                     className={styles.btnLight}
-                                    onClick={() => setDateSort(s => (s === 'desc' ? 'asc' : 'desc'))}
+                                    onClick={() => {
+                                        const nextSort = dateSort === 'desc' ? 'asc' : 'desc';
+                                        setDateSort(nextSort);
+                                        replaceListUrl({dateSort: nextSort});
+                                    }}
                                 >
                                     {dateSort === 'desc' ? 'Сначала новые' : 'Сначала старые'}
                                 </button>
@@ -513,7 +555,10 @@ export default function StaffOrdersPage() {
                             key={t.key}
                             type="button"
                             className={`${styles.tabBtn} ${activeStatus === t.key ? styles.tabBtnActive : ''}`}
-                            onClick={() => setActiveStatus(t.key)}
+                            onClick={() => {
+                                setActiveStatus(t.key);
+                                replaceListUrl({status: t.key});
+                            }}
                         >
                             {t.label}
                         </button>

@@ -1,12 +1,12 @@
 import {useEffect, useMemo, useState, useRef, useCallback} from 'react';
-import {Link, useParams} from 'react-router-dom';
+import {Link, useLocation, useParams, useSearchParams} from 'react-router-dom';
 import styles from '../styles/StaffOrderPage.module.css';
 import {useAuth} from '../store/authContext';
 
 const STATUSES = ['new', 'paid', 'shipped', 'completed', 'canceled'];
 
 function statusLabel(s) {
-    if (s === 'new') return 'Ожидает сборки';
+    if (s === 'new') return 'Ожидает оплаты';
     if (s === 'paid') return 'Оплачен';
     if (s === 'shipped') return 'Отгружен';
     if (s === 'completed') return 'Доставлен';
@@ -79,6 +79,8 @@ function deliveryLabel(type) {
 
 export default function StaffOrderPage() {
     const {id} = useParams();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
     const {authFetch} = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -172,6 +174,8 @@ export default function StaffOrderPage() {
                         return next;
                     });
                 }
+            } catch {
+                // Один неудачный запрос к карточке товара не должен ломать загрузку остальных изображений.
             } finally {
                 inFlightRef.current.delete(key);
             }
@@ -183,7 +187,7 @@ export default function StaffOrderPage() {
 
             for (let i = 0; i < list.length; i += CONCURRENCY) {
                 const chunk = list.slice(i, i + CONCURRENCY);
-                await Promise.all(chunk.map(fetchOne));
+                await Promise.allSettled(chunk.map(fetchOne));
                 if (cancelled) break;
             }
         };
@@ -255,6 +259,7 @@ export default function StaffOrderPage() {
     const pickupAddress = order?.pickup_point_data?.address || '';
     const pickupName = order?.pickup_point_data?.name || '';
     const itemsTotal = (order?.items || []).reduce((sum, item) => sum + Number(item?.quantity || 0), 0);
+    const backTo = searchParams.get('back') || location.state?.backTo || '/staff/orders';
 
     return (
         <div className={styles.page}>
@@ -281,7 +286,7 @@ export default function StaffOrderPage() {
                         </div>
                     </div>
                     <div className={styles.headRight}>
-                        <Link to="/staff/orders" className={styles.btnLight}>Назад</Link>
+                        <Link to={backTo} className={styles.btnLight}>Назад</Link>
                     </div>
                 </div>
 

@@ -26,6 +26,7 @@ class Order(models.Model):
 
     status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.NEW)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_expires_at = models.DateTimeField(null=True, blank=True)
 
     customer_name = models.CharField(max_length=120)
     customer_phone = models.CharField(max_length=30)
@@ -64,6 +65,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey('catalog.Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items')
 
     product_name_snapshot = models.CharField(max_length=200)
+    image_url_snapshot = models.URLField(blank=True, default='')
     price_snapshot = models.DecimalField(max_digits=12, decimal_places=2)
     quantity = models.PositiveIntegerField()
 

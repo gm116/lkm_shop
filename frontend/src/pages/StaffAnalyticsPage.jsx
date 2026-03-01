@@ -24,6 +24,14 @@ const STATUS_LABELS = {
     canceled: 'Отменены',
 };
 
+const STATUS_LABELS_SINGLE = {
+    new: 'Ожидает оплаты',
+    paid: 'Оплачен',
+    shipped: 'Отгружен',
+    completed: 'Доставлен',
+    canceled: 'Отменен',
+};
+
 const DELIVERY_LABELS = {
     store_pickup: 'Самовывоз',
     courier: 'Курьер',
@@ -67,6 +75,17 @@ function toDateInputValue(d) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+function parseLocalDate(value) {
+    if (!value) return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+}
+
 function buildPresetRange(days) {
     const end = new Date();
     const start = new Date(end);
@@ -79,9 +98,9 @@ function buildPresetRange(days) {
 
 function getPresetByRange(dateFrom, dateTo) {
     if (!dateFrom || !dateTo) return null;
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+    const from = parseLocalDate(dateFrom);
+    const to = parseLocalDate(dateTo);
+    if (!from || !to) return null;
     const diffDays = Math.round((to - from) / 86400000) + 1;
     return PERIOD_PRESETS.find((preset) => preset.days === diffDays) || null;
 }
@@ -141,31 +160,37 @@ function formatDateTime(value) {
 
 function formatShortDate(value) {
     if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
+    const date = parseLocalDate(value);
+    if (!date) return value;
     return date.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'});
 }
 
 function formatBucketLabel(row, granularity) {
     if (!row?.bucket_start) return row?.label || '';
     if (granularity === 'month') {
-        return new Date(row.bucket_start).toLocaleDateString('ru-RU', {month: 'short', year: '2-digit'});
+        return parseLocalDate(row.bucket_start)?.toLocaleDateString('ru-RU', {month: 'short', year: '2-digit'}) || row?.label || '';
     }
     if (granularity === 'week') {
         return `${formatShortDate(row.bucket_start)} - ${formatShortDate(row.bucket_end)}`;
     }
-    return new Date(row.bucket_start).toLocaleDateString('ru-RU', {day: 'numeric'});
+    return parseLocalDate(row.bucket_start)?.toLocaleDateString('ru-RU', {day: 'numeric'}) || row?.label || '';
 }
 
 function formatBucketRange(row, granularity) {
     if (!row?.bucket_start) return row?.label || '';
     if (granularity === 'month') {
-        return new Date(row.bucket_start).toLocaleDateString('ru-RU', {month: 'long', year: 'numeric'});
+        return parseLocalDate(row.bucket_start)?.toLocaleDateString('ru-RU', {month: 'long', year: 'numeric'}) || row?.label || '';
     }
     if (granularity === 'week') {
         return `${formatShortDate(row.bucket_start)} - ${formatShortDate(row.bucket_end)}`;
     }
     return formatShortDate(row.bucket_start);
+}
+
+function formatAxisKey(value, granularity) {
+    if (!value) return '';
+    const [bucketStart, bucketEnd] = String(value).split('|');
+    return formatBucketLabel({bucket_start: bucketStart, bucket_end: bucketEnd}, granularity);
 }
 
 function toneClass(tone, stylesMap) {
@@ -189,25 +214,77 @@ function formatMetricValue(value, kind) {
     return formatNumber(value, 0);
 }
 
+function roundedTopRectPath(x, y, width, height, radius) {
+    if (width <= 0 || height <= 0) return '';
+    const r = Math.min(radius, width / 2, height / 2);
+    return [
+        `M ${x} ${y + height}`,
+        `L ${x} ${y + r}`,
+        `Q ${x} ${y} ${x + r} ${y}`,
+        `L ${x + width - r} ${y}`,
+        `Q ${x + width} ${y} ${x + width} ${y + r}`,
+        `L ${x + width} ${y + height}`,
+        'Z',
+    ].join(' ');
+}
+
+function DeliveryFlowBarShape(props) {
+    const {x, y, width, height, payload} = props;
+    if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+
+    const totalRate = Number(payload?.delivery_flow_rate || 0);
+    const deliveredRate = Number(payload?.completion_rate || 0);
+    const innerInset = 0;
+    const innerWidth = width;
+    const deliveredHeight = totalRate > 0
+        ? Math.max(0, Math.min(height, (height * deliveredRate) / totalRate))
+        : 0;
+    const innerX = x + innerInset;
+    const innerY = y + (height - deliveredHeight);
+
+    return (
+        <g>
+            <path d={roundedTopRectPath(x, y, width, height, 8)} fill="#cbd5e1"/>
+            {deliveredHeight > 0 ? (
+                <path d={roundedTopRectPath(innerX, innerY, innerWidth, deliveredHeight, 8)} fill="#16a34a"/>
+            ) : null}
+        </g>
+    );
+}
+
 function CustomTooltip({active, payload, label}) {
     if (!active || !payload?.length) return null;
 
     const tooltipTitle = payload[0]?.payload?.tooltipLabel || label;
+    const rowPayload = payload[0]?.payload || {};
+    const isDeliveryFlowTooltip = payload.some((entry) => entry?.dataKey === 'delivery_flow_rate');
+    const tooltipRows = isDeliveryFlowTooltip
+        ? [
+            {key: 'delivery_flow_rate', name: 'Еще в пути и доставлено', color: '#cbd5e1', value: rowPayload.delivery_flow_rate},
+            {key: 'completion_rate', name: 'Доставлено', color: '#16a34a', value: rowPayload.completion_rate},
+        ]
+        : payload.map((entry) => ({
+            key: `${entry.dataKey}-${entry.name}`,
+            name: entry.name,
+            color: entry.color,
+            value: entry.value,
+            dataKey: entry.dataKey,
+        }));
 
     return (
         <div className={styles.chartTooltip}>
             <div className={styles.chartTooltipTitle}>{tooltipTitle}</div>
             <div className={styles.chartTooltipList}>
-                {payload.map((entry) => (
-                    <div key={`${entry.dataKey}-${entry.name}`} className={styles.chartTooltipRow}>
+                {tooltipRows.map((entry) => (
+                    <div key={entry.key} className={styles.chartTooltipRow}>
                         <span className={styles.chartTooltipName}>
                             <span className={styles.chartTooltipDot} style={{background: entry.color}}/>
                             {entry.name}
                         </span>
                         <strong>
-                            {String(entry.dataKey).includes('rate')
+                            {String(entry.dataKey || entry.key).includes('rate')
                                 ? formatPercent(entry.value)
-                                : String(entry.dataKey).includes('revenue')
+                                : String(entry.dataKey || entry.key).includes('revenue')
                                     ? `${formatMoney(entry.value)} ₽`
                                     : formatNumber(entry.value, 0)}
                         </strong>
@@ -227,6 +304,7 @@ export default function StaffAnalyticsPage() {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState('');
     const [error, setError] = useState('');
     const [analytics, setAnalytics] = useState(null);
 
@@ -236,7 +314,9 @@ export default function StaffAnalyticsPage() {
     const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
     const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
     const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const periodMenuRef = useRef(null);
+    const exportMenuRef = useRef(null);
 
     const loadAnalytics = useCallback(async () => {
         setLoading(true);
@@ -282,22 +362,36 @@ export default function StaffAnalyticsPage() {
         return () => document.removeEventListener('mousedown', handlePointerDown);
     }, [isPeriodMenuOpen, dateFrom, dateTo]);
 
+    useEffect(() => {
+        if (!isExportMenuOpen) return undefined;
+
+        const handlePointerDown = (event) => {
+            if (!exportMenuRef.current?.contains(event.target)) {
+                setIsExportMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        return () => document.removeEventListener('mousedown', handlePointerDown);
+    }, [isExportMenuOpen]);
+
     const period = analytics?.period || {};
     const overview = analytics?.overview || {};
     const attention = analytics?.attention || [];
-    const timeline = analytics?.timeline || [];
+    const timeline = useMemo(() => (Array.isArray(analytics?.timeline) ? analytics.timeline : []), [analytics?.timeline]);
     const statusBreakdown = analytics?.status_breakdown || [];
     const deliveryBreakdown = analytics?.delivery_breakdown || [];
     const paymentBreakdown = analytics?.payment_breakdown || [];
     const topProducts = analytics?.top_products || [];
     const recentOrders = analytics?.recent_orders || [];
-    const funnel = analytics?.funnel || [];
+    const funnel = useMemo(() => (Array.isArray(analytics?.funnel) ? analytics.funnel : []), [analytics?.funnel]);
     const weekdayBreakdown = analytics?.weekday_breakdown || [];
     const cityBreakdown = analytics?.city_breakdown || [];
 
     const timelineDisplay = useMemo(() => {
         return timeline.map((row) => ({
             ...row,
+            axisKey: `${row.bucket_start || ''}|${row.bucket_end || ''}`,
             axisLabel: formatBucketLabel(row, period.granularity),
             tooltipLabel: formatBucketRange(row, period.granularity),
         }));
@@ -352,8 +446,8 @@ export default function StaffAnalyticsPage() {
     ];
 
     const operationCards = [
-        {key: 'new', label: 'Новые', value: formatNumber(overview.pending_assembly), note: 'Требуют сборки'},
-        {key: 'ready', label: 'К отгрузке', value: formatNumber(overview.ready_to_ship), note: 'Оплачены и готовы к передаче'},
+        {key: 'new', label: 'Ожидают оплаты', value: formatNumber(overview.pending_payment), note: 'Таймер оплаты еще не истек'},
+        {key: 'paid', label: 'К сборке', value: formatNumber(overview.pending_assembly), note: 'Оплачены и доступны сборщику'},
         {key: 'shipped', label: 'В пути', value: formatNumber(overview.shipped_total), note: 'Переданы в доставку'},
         {key: 'completed', label: 'Доставлены', value: formatNumber(overview.completed_total), note: formatPercent(overview.completion_rate)},
     ];
@@ -388,6 +482,41 @@ export default function StaffAnalyticsPage() {
     const openOrder = (id) => {
         if (!id) return;
         navigate(`/staff/orders/${id}`);
+    };
+
+    const handleExport = async (format) => {
+        setError('');
+        setExporting(format);
+        setIsExportMenuOpen(false);
+        try {
+            const qs = new URLSearchParams({
+                date_from: dateFrom,
+                date_to: dateTo,
+                export_format: format,
+            });
+            const res = await authFetch(`/api/staff/analytics/export/?${qs.toString()}`, {method: 'GET'});
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.detail || 'Не удалось выгрузить данные');
+            }
+
+            const blob = await res.blob();
+            const header = res.headers.get('content-disposition') || '';
+            const matchedName = header.match(/filename="([^"]+)"/i);
+            const fileName = matchedName?.[1] || `analytics.${format === 'xlsx' ? 'xlsx' : 'csv'}`;
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (e) {
+            setError(e?.message || 'Ошибка выгрузки');
+        } finally {
+            setExporting('');
+        }
     };
 
     return (
@@ -482,6 +611,43 @@ export default function StaffAnalyticsPage() {
                             >
                                 Обновить
                             </button>
+
+                            <div className={styles.periodMenuWrap} ref={exportMenuRef}>
+                                <button
+                                    type="button"
+                                    className={styles.btnLight}
+                                    onClick={() => setIsExportMenuOpen((open) => !open)}
+                                    disabled={!!exporting}
+                                    aria-expanded={isExportMenuOpen}
+                                >
+                                    {exporting ? 'Готовлю отчет…' : 'Отчет за период'}
+                                </button>
+
+                                {isExportMenuOpen ? (
+                                    <div className={styles.periodPopover}>
+                                        <div className={styles.periodPopoverTitle}>Выгрузка отчета</div>
+                                        <div className={styles.periodHint}>
+                                            Период: {formatShortDate(dateFrom)} - {formatShortDate(dateTo)}
+                                        </div>
+                                        <div className={styles.periodActions}>
+                                            <button
+                                                type="button"
+                                                className={styles.btnLight}
+                                                onClick={() => handleExport('csv')}
+                                            >
+                                                Скачать CSV
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={styles.btnLight}
+                                                onClick={() => handleExport('xlsx')}
+                                            >
+                                                Скачать Excel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -525,7 +691,14 @@ export default function StaffAnalyticsPage() {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid stroke="#d6e0ee" strokeDasharray="3 8" vertical={false}/>
-                                            <XAxis dataKey="axisLabel" tickLine={false} axisLine={false} minTickGap={18} dy={8}/>
+                                            <XAxis
+                                                dataKey="axisKey"
+                                                tickFormatter={(value) => formatAxisKey(value, period.granularity)}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                minTickGap={18}
+                                                dy={8}
+                                            />
                                             <YAxis tickLine={false} axisLine={false} tickFormatter={formatCompactMoney} width={72}/>
                                             <Tooltip content={<CustomTooltip/>}/>
                                             <Area
@@ -562,8 +735,18 @@ export default function StaffAnalyticsPage() {
                         <section className={styles.panel}>
                             <div className={styles.panelHead}>
                                 <div>
-                                    <div className={styles.panelTitle}>Доля доставленных заказов</div>
-                                    <div className={styles.panelHint}>Столбец показывает долю доставленных заказов, линия — долю заказов, которые еще находятся в пути</div>
+                                    <div className={styles.panelTitle}>Доставка по статусу</div>
+                                    <div className={styles.panelHint}>Серый сегмент показывает заказы в пути, зеленый — уже доставленные. Новые и неоплаченные заказы сюда не попадают.</div>
+                                </div>
+                                <div className={styles.inlineLegend}>
+                                    <span className={styles.inlineLegendItem}>
+                                        <span className={styles.inlineLegendDot} style={{background: '#cbd5e1'}}/>
+                                        Еще в пути
+                                    </span>
+                                    <span className={styles.inlineLegendItem}>
+                                        <span className={styles.inlineLegendDot} style={{background: '#16a34a'}}/>
+                                        Доставлено
+                                    </span>
                                 </div>
                             </div>
 
@@ -572,31 +755,24 @@ export default function StaffAnalyticsPage() {
                             ) : timelineDisplay.length ? (
                                 <div className={styles.chartSurface}>
                                     <ResponsiveContainer width="100%" height={208}>
-                                        <ComposedChart data={timelineDisplay} margin={{top: 8, right: 12, left: 8, bottom: 4}}>
+                                        <ComposedChart data={timelineDisplay} margin={{top: 8, right: 12, left: 8, bottom: 4}} barGap="-100%" barCategoryGap="34%">
                                             <CartesianGrid stroke="#d6e0ee" strokeDasharray="3 8" vertical={false}/>
-                                            <XAxis dataKey="axisLabel" tickLine={false} axisLine={false} minTickGap={18} dy={8}/>
+                                            <XAxis
+                                                dataKey="axisKey"
+                                                tickFormatter={(value) => formatAxisKey(value, period.granularity)}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                minTickGap={18}
+                                                dy={8}
+                                            />
                                             <YAxis domain={[0, 100]} tickFormatter={formatPercent} tickLine={false} axisLine={false} width={56}/>
                                             <Tooltip content={<CustomTooltip/>}/>
                                             <Bar
-                                                dataKey="completion_rate"
-                                                name="Доставлено"
-                                                fill="#16a34a"
-                                                radius={[8, 8, 0, 0]}
-                                                background={{fill: '#edf2f7'}}
-                                                maxBarSize={18}
+                                                dataKey="delivery_flow_rate"
+                                                name="Поток доставки"
+                                                shape={<DeliveryFlowBarShape/>}
+                                                barSize={18}
                                                 isAnimationActive={false}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="open_rate"
-                                                name="Еще в пути"
-                                                stroke="#2563eb"
-                                                strokeWidth={2.5}
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                isAnimationActive={false}
-                                                dot={false}
-                                                activeDot={{r: 4, strokeWidth: 2, fill: '#fff', stroke: '#2563eb'}}
                                             />
                                         </ComposedChart>
                                     </ResponsiveContainer>
@@ -815,12 +991,12 @@ export default function StaffAnalyticsPage() {
                                                     {index === 0 ? (
                                                         <>
                                                             <span>База расчета воронки</span>
-                                                            <span>Все созданные за период заказы</span>
+                                                            <span>Все созданные за период, включая {formatNumber(overview.canceled_total)} {pluralize(overview.canceled_total, 'отмененный заказ', 'отмененных заказа', 'отмененных заказов')}</span>
                                                         </>
                                                     ) : index === 1 ? (
                                                         <>
                                                             <span>Конверсия в оплату: {formatPercent(item.share_total)}</span>
-                                                            <span>Не оплачено: {formatPercent(item.drop_off)}</span>
+                                                            <span>Не дошло до оплаты: {formatPercent(item.drop_off)}</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -867,7 +1043,7 @@ export default function StaffAnalyticsPage() {
                     <section className={styles.panel}>
                         <div className={styles.panelHead}>
                             <div>
-                                <div className={styles.panelTitle}>Последние заказы</div>
+                                <div className={styles.panelTitle}>Недавняя активность</div>
                                 <div className={styles.panelHint}>Быстрый переход в карточку заказа</div>
                             </div>
                         </div>
@@ -904,7 +1080,7 @@ export default function StaffAnalyticsPage() {
                                                 </div>
                                             </div>
                                             <div className={styles.recentStatusBadge} style={{background: STATUS_COLORS[order.status] || '#111827'}}>
-                                                {STATUS_LABELS[order.status] || order.status}
+                                                {STATUS_LABELS_SINGLE[order.status] || order.status}
                                             </div>
                                         </>
                                     )}

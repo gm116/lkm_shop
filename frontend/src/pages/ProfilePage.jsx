@@ -7,10 +7,10 @@ function formatMoney(v) {
     return n.toLocaleString('ru-RU');
 }
 
-function statusLabel(status) {
+function statusLabel(status, paymentSucceeded = false) {
     if (!status) return '';
     const map = {
-        new: 'Ожидает сборки',
+        new: paymentSucceeded ? 'Новый' : 'Ожидает оплаты',
         paid: 'Оплачен',
         shipped: 'Отправлен',
         completed: 'Выполнен',
@@ -745,9 +745,11 @@ export default function ProfilePage() {
                                     const statusUi = (() => {
                                         const map = {
                                             new: {
-                                                tone: styles.stNew,
-                                                title: 'Новый',
-                                                desc: 'Мы получили заказ и начали обработку.'
+                                                tone: o.payment_succeeded ? styles.stNew : styles.stProcessing,
+                                                title: o.payment_succeeded ? 'Новый' : 'Ожидает оплаты',
+                                                desc: o.payment_succeeded
+                                                    ? 'Оплата подтверждена. Заказ поступил в работу.'
+                                                    : 'Ждем оплату заказа. Если оплата не поступит за 10 минут, заказ будет отменен.'
                                             },
                                             paid: {
                                                 tone: styles.stPaid,
@@ -777,7 +779,7 @@ export default function ProfilePage() {
                                         };
                                         return map[o.status] || {
                                             tone: styles.stProcessing,
-                                            title: statusLabel(o.status),
+                                            title: statusLabel(o.status, o.payment_succeeded),
                                             desc: ''
                                         };
                                     })();

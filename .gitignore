@@ -1,5 +1,9 @@
 frontend/.env
+frontend/.env.docker
 backend/.env
+backend/.env.docker
 database/.env
+database/.env.docker
+database/.postgres.env.docker
 database/data
 .idea
