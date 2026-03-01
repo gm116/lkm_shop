@@ -878,38 +878,38 @@
 /* Status tones */
 .stNew {
     background: #fff7ed;
-    border-color: #fed7aa;
-    color: #9a3412;
+    border-color: #f5c892;
+    color: #9a5b16;
 }
 
 .stPaid {
-    background: #eef2ff;
-    border-color: #c7d2fe;
-    color: #3730a3;
+    background: #eff6ff;
+    border-color: #b7d3f6;
+    color: #2c69b0;
 }
 
 .stShipped {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1d4ed8;
+    background: #eefbf6;
+    border-color: #b7e8d2;
+    color: #1c7a5a;
 }
 
 .stCompleted {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
-    color: #065f46;
+    background: #eef8f0;
+    border-color: #b8dfc2;
+    color: #2f7d43;
 }
 
 .stCanceled {
-    background: #fff5f5;
-    border-color: #fecaca;
-    color: #991b1b;
+    background: #fff1f2;
+    border-color: #f6c2c7;
+    color: #b54757;
 }
 
 .stProcessing {
-    background: #fafafa;
-    border-color: #e5e7eb;
-    color: #374151;
+    background: #f3f6fb;
+    border-color: #d7e0ef;
+    color: #5a6b85;
 }
 
 /* Responsive */

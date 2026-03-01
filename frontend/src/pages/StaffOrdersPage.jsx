@@ -4,6 +4,13 @@ import styles from '../styles/StaffOrdersPage.module.css';
 import {useAuth} from '../store/authContext';
 
 const ORDER_SKELETON_COUNT = 6;
+const PERIOD_PRESETS = [
+    {key: 'week', label: 'За неделю', days: 7},
+    {key: 'month', label: 'За месяц', days: 30},
+    {key: 'quarter', label: 'За 3 месяца', days: 90},
+    {key: 'half_year', label: 'За 6 месяцев', days: 180},
+    {key: 'year', label: 'За год', days: 365},
+];
 
 const STATUS_TABS = [
     {key: 'new', label: 'Новые'},
@@ -63,6 +70,38 @@ function toDateInputValue(d) {
     const mm = pad2(d.getMonth() + 1);
     const dd = pad2(d.getDate());
     return `${yyyy}-${mm}-${dd}`;
+}
+
+function buildPresetRange(days) {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - (days - 1));
+    return {
+        dateFrom: toDateInputValue(start),
+        dateTo: toDateInputValue(end),
+    };
+}
+
+function getPresetByRange(dateFrom, dateTo) {
+    if (!dateFrom || !dateTo) return null;
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+    const diffDays = Math.round((to - from) / 86400000) + 1;
+    return PERIOD_PRESETS.find((preset) => preset.days === diffDays) || null;
+}
+
+function formatPeriodButtonLabel(dateFrom, dateTo) {
+    const preset = getPresetByRange(dateFrom, dateTo);
+    if (preset) return preset.label;
+    return 'Свой период';
+}
+
+function formatShortDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'});
 }
 
 function parseISODateSafe(v) {
@@ -131,13 +170,12 @@ export default function StaffOrdersPage() {
     const [error, setError] = useState('');
     const [orders, setOrders] = useState([]);
 
-    // Даты: по умолчанию последние 30 дней
-    const [dateFrom, setDateFrom] = useState(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 30);
-        return toDateInputValue(d);
-    });
-    const [dateTo, setDateTo] = useState(() => toDateInputValue(new Date()));
+    const defaultRange = useMemo(() => buildPresetRange(30), []);
+    const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
+    const [dateTo, setDateTo] = useState(defaultRange.dateTo);
+    const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
+    const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
+    const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
 
     // Сортировка по дате
     const [dateSort, setDateSort] = useState('desc'); // desc = новые сверху, asc = старые сверху
@@ -145,6 +183,7 @@ export default function StaffOrdersPage() {
     // кэш картинок по product_id (строка → url)
     const [productImageMap, setProductImageMap] = useState(() => new Map());
     const inFlightRef = useRef(new Set()); // чтобы не дёргать один и тот же product_id параллельно
+    const periodMenuRef = useRef(null);
 
     const loadOrders = useCallback(async (statusKey) => {
         setLoading(true);
@@ -175,6 +214,21 @@ export default function StaffOrdersPage() {
     useEffect(() => {
         loadOrders(activeStatus);
     }, [activeStatus, loadOrders]);
+
+    useEffect(() => {
+        if (!isPeriodMenuOpen) return undefined;
+
+        const handlePointerDown = (event) => {
+            if (!periodMenuRef.current?.contains(event.target)) {
+                setIsPeriodMenuOpen(false);
+                setDraftDateFrom(dateFrom);
+                setDraftDateTo(dateTo);
+            }
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        return () => document.removeEventListener('mousedown', handlePointerDown);
+    }, [isPeriodMenuOpen, dateFrom, dateTo]);
 
     // подтягиваем картинки для всех product_id, которых нет в кэше
     useEffect(() => {
@@ -293,6 +347,33 @@ export default function StaffOrdersPage() {
         []
     );
 
+    const applyPeriod = (nextFrom, nextTo) => {
+        setDateFrom(nextFrom);
+        setDateTo(nextTo);
+        setDraftDateFrom(nextFrom);
+        setDraftDateTo(nextTo);
+        setIsPeriodMenuOpen(false);
+    };
+
+    const handlePresetSelect = (days) => {
+        const range = buildPresetRange(days);
+        applyPeriod(range.dateFrom, range.dateTo);
+    };
+
+    const handleApplyCustomPeriod = () => {
+        if (!draftDateFrom || !draftDateTo) return;
+        applyPeriod(draftDateFrom, draftDateTo);
+    };
+
+    const handleTogglePeriodMenu = () => {
+        const nextOpen = !isPeriodMenuOpen;
+        setIsPeriodMenuOpen(nextOpen);
+        if (nextOpen) {
+            setDraftDateFrom(dateFrom);
+            setDraftDateTo(dateTo);
+        }
+    };
+
     const openOrder = (id) => {
         if (!id) return;
         navigate(`/staff/orders/${id}`);
@@ -330,23 +411,77 @@ export default function StaffOrdersPage() {
 
                     <div className={styles.headRight}>
                         <div className={styles.filters}>
-                            <div className={styles.filterGroup}>
+                            <div className={styles.periodMenuWrap} ref={periodMenuRef}>
                                 <span className={styles.filterLabel}>Период</span>
-                                <div className={styles.dateRow}>
-                                    <input
-                                        className={styles.dateInput}
-                                        type="date"
-                                        value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                    />
-                                    <span className={styles.dateDash}>—</span>
-                                    <input
-                                        className={styles.dateInput}
-                                        type="date"
-                                        value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                    />
-                                </div>
+                                <button
+                                    type="button"
+                                    className={styles.periodButton}
+                                    onClick={handleTogglePeriodMenu}
+                                    aria-expanded={isPeriodMenuOpen}
+                                >
+                                    <span>{formatPeriodButtonLabel(dateFrom, dateTo)}</span>
+                                    <span className={styles.periodButtonMeta}>
+                                        {formatShortDate(dateFrom)} - {formatShortDate(dateTo)}
+                                    </span>
+                                </button>
+
+                                {isPeriodMenuOpen ? (
+                                    <div className={styles.periodPopover}>
+                                        <div className={styles.periodPopoverTitle}>Быстрый выбор</div>
+                                        <div className={styles.periodPresetGrid}>
+                                            {PERIOD_PRESETS.map((preset) => (
+                                                <button
+                                                    key={preset.key}
+                                                    type="button"
+                                                    className={`${styles.periodPreset} ${getPresetByRange(dateFrom, dateTo)?.key === preset.key ? styles.periodPresetActive : ''}`}
+                                                    onClick={() => handlePresetSelect(preset.days)}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className={styles.periodDivider}/>
+
+                                        <div className={styles.periodPopoverTitle}>Свой период</div>
+                                        <div className={styles.periodDateGrid}>
+                                            <input
+                                                className={styles.dateInput}
+                                                type="date"
+                                                value={draftDateFrom}
+                                                onChange={(e) => setDraftDateFrom(e.target.value)}
+                                            />
+                                            <input
+                                                className={styles.dateInput}
+                                                type="date"
+                                                value={draftDateTo}
+                                                onChange={(e) => setDraftDateTo(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className={styles.periodActions}>
+                                            <button
+                                                type="button"
+                                                className={styles.btnGhost}
+                                                onClick={() => {
+                                                    setDraftDateFrom(dateFrom);
+                                                    setDraftDateTo(dateTo);
+                                                    setIsPeriodMenuOpen(false);
+                                                }}
+                                            >
+                                                Отмена
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={styles.btnLight}
+                                                onClick={handleApplyCustomPeriod}
+                                                disabled={!draftDateFrom || !draftDateTo}
+                                            >
+                                                Применить
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className={styles.filterGroup}>

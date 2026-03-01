@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 
 import StaffOrdersPage from './pages/StaffOrdersPage';
 import StaffOrderPage from './pages/StaffOrderPage';
+import StaffAnalyticsPage from './pages/StaffAnalyticsPage';
 
 import Header from './components/Header';
 import Footer from "./components/Footer";
@@ -89,6 +90,14 @@ export default function App() {
                             }
                         />
 
+                        <Route
+                            path="/staff/analytics"
+                            element={
+                                <StaffRoute>
+                                    <StaffAnalyticsPage/>
+                                </StaffRoute>
+                            }
+                        />
                         <Route
                             path="/staff/orders"
                             element={

@@ -122,7 +122,9 @@
 }
 
 .dateInput,
-.btnLight {
+.btnLight,
+.btnGhost,
+.periodButton {
     height: 40px;
     border-radius: 14px;
     border: 1px solid #e6e8ef;
@@ -139,24 +141,123 @@
 }
 
 .dateInput:focus,
-.btnLight:hover {
+.btnLight:hover,
+.btnGhost:hover,
+.periodButton:hover {
     border-color: #c7cbd1;
     background: #f9fafb;
 }
 
-.btnLight {
+.btnLight,
+.btnGhost {
     padding: 0 16px;
     cursor: pointer;
     white-space: nowrap;
 }
 
-.btnLight:active {
+.btnGhost {
+    background: #f9fafb;
+}
+
+.btnLight:active,
+.btnGhost:active {
     transform: translateY(1px);
 }
 
-.btnLight:disabled {
+.btnLight:disabled,
+.btnGhost:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+.periodMenuWrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.periodButton {
+    min-width: 220px;
+    height: auto;
+    min-height: 40px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.periodButtonMeta {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+}
+
+.periodPopover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    width: 320px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    box-shadow: 0 18px 42px rgba(16, 24, 40, 0.14);
+}
+
+.periodPopoverTitle {
+    font-size: 12px;
+    font-weight: 900;
+    color: #111827;
+    margin-bottom: 10px;
+}
+
+.periodPresetGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.periodPreset {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.periodPreset:hover,
+.periodPresetActive {
+    border-color: #c7cbd1;
+    background: #f9fafb;
+}
+
+.periodDivider {
+    height: 1px;
+    background: #eef2f7;
+    margin: 14px 0;
+}
+
+.periodDateGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.periodActions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 .tabs {
@@ -473,32 +574,32 @@
 
 .badge_new {
     background: #fff7ed;
-    border-color: #fed7aa;
-    color: #9a3412;
+    border-color: #f5c892;
+    color: #9a5b16;
 }
 
 .badge_paid {
     background: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1d4ed8;
+    border-color: #b7d3f6;
+    color: #2c69b0;
 }
 
 .badge_shipped {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
-    color: #065f46;
+    background: #eefbf6;
+    border-color: #b7e8d2;
+    color: #1c7a5a;
 }
 
 .badge_completed {
-    background: #f5f3ff;
-    border-color: #ddd6fe;
-    color: #5b21b6;
+    background: #eef8f0;
+    border-color: #b8dfc2;
+    color: #2f7d43;
 }
 
 .badge_canceled {
-    background: #fff5f5;
-    border-color: #fecaca;
-    color: #991b1b;
+    background: #fff1f2;
+    border-color: #f6c2c7;
+    color: #b54757;
 }
 
 .orderSkeleton {
@@ -631,9 +732,22 @@
         flex-wrap: wrap;
     }
 
+    .periodButton,
     .dateInput,
-    .btnLight {
+    .btnLight,
+    .btnGhost {
         width: 100%;
+    }
+
+    .periodPopover {
+        left: 0;
+        right: auto;
+        width: min(100vw - 40px, 320px);
+    }
+
+    .periodDateGrid,
+    .periodPresetGrid {
+        grid-template-columns: 1fr;
     }
 
     .orderCard {
