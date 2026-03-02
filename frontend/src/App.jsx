@@ -1,4 +1,5 @@
-import {BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
+import {useEffect} from 'react';
+import {BrowserRouter, Routes, Route, Navigate, useLocation} from 'react-router-dom';
 
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
@@ -63,9 +64,42 @@ function StaffRoute({children}) {
     return children;
 }
 
+function AdminRoute({children}) {
+    const {isAuthenticated, loading, permissions} = useAuth();
+
+    if (loading) {
+        return null;
+    }
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace/>;
+    }
+
+    if (!permissions) {
+        return <div style={{padding: 24}}>Загрузка прав…</div>;
+    }
+
+    if (!permissions?.is_superuser && !permissions?.is_staff) {
+        return <Navigate to="/profile" replace/>;
+    }
+
+    return children;
+}
+
+function ScrollToTop() {
+    const location = useLocation();
+
+    useEffect(() => {
+        window.scrollTo({top: 0, left: 0, behavior: 'auto'});
+    }, [location.pathname, location.search]);
+
+    return null;
+}
+
 export default function App() {
     return (
         <BrowserRouter>
+            <ScrollToTop/>
             <div className="app-root">
                 <Header/>
 
@@ -115,7 +149,14 @@ export default function App() {
                             }
                         />
 
-                        <Route path="/admin" element={<AdminDashboard/>}/>
+                        <Route
+                            path="/admin"
+                            element={
+                                <AdminRoute>
+                                    <AdminDashboard/>
+                                </AdminRoute>
+                            }
+                        />
                         <Route path="*" element={<div style={{padding: 24}}>404</div>}/>
                     </Routes>
                 </main>

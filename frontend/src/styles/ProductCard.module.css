@@ -60,7 +60,7 @@
 
 .cardName {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 650;
     padding: 2px 12px 0 12px;
     color: #111827;
     line-height: 1.2;
@@ -100,7 +100,7 @@
 .stockHint {
     font-size: 12px;
     color: #6b7280;
-    font-weight: 650;
+    font-weight: 600;
     white-space: nowrap;
 }
 

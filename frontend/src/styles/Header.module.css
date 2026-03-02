@@ -67,7 +67,7 @@
     width: 100%;
     background: transparent;
     color: #111827;
-    font-weight: 600;
+    font-weight: 650;
 }
 
 .searchInput::placeholder {
@@ -138,7 +138,7 @@
     font-size: 12px;
     line-height: 1;
     color: #6b7280;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 .badge {

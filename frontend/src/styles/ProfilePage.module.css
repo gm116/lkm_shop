@@ -33,7 +33,7 @@
     margin-top: 6px;
     font-size: 13px;
     color: #6b7280;
-    font-weight: 600;
+    font-weight: 650;
 }
 
 .headerRight {
@@ -704,7 +704,7 @@
     margin-top: 4px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 600;
+    font-weight: 650;
     white-space: nowrap;
 }
 
@@ -770,7 +770,7 @@
     margin-top: 4px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 600;
+    font-weight: 650;
     line-height: 1.35;
 }
 
@@ -805,7 +805,7 @@
     margin-top: 2px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 600;
+    font-weight: 650;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -821,7 +821,7 @@
 .itemsHint {
     font-size: 12px;
     color: #6b7280;
-    font-weight: 600;
+    font-weight: 650;
     white-space: nowrap;
 }
 

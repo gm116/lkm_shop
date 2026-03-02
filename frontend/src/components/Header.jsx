@@ -1,5 +1,5 @@
 import {Link, useNavigate, useLocation} from 'react-router-dom';
-import {FaSearch, FaShoppingBasket, FaHeart, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar} from 'react-icons/fa';
+import {FaSearch, FaShoppingBasket, FaHeart, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar, FaTags} from 'react-icons/fa';
 import {useCart} from '../store/cartContext';
 import {useAuth} from '../store/authContext';
 import styles from '../styles/Header.module.css';
@@ -17,6 +17,7 @@ export default function Header({favoriteCount = 0}) {
         !!permissions?.is_superuser ||
         !!permissions?.is_staff ||
         (Array.isArray(permissions?.groups) && permissions.groups.includes('warehouse'));
+    const isAdmin = !!permissions?.is_superuser || !!permissions?.is_staff;
 
     const cartCount = useMemo(() => {
         return cart.reduce((sum, item) => sum + Number(item.count || 0), 0);
@@ -103,6 +104,14 @@ export default function Header({favoriteCount = 0}) {
                             )}
                             {isStaff && (
                                 <>
+                                    {isAdmin && (
+                                        <Link to="/admin" className={styles.iconBtn}>
+                                            <span className={styles.iconCircle} aria-hidden="true">
+                                                <FaTags size={18}/>
+                                            </span>
+                                            <span className={styles.iconLabel}>Товары</span>
+                                        </Link>
+                                    )}
                                     <Link to="/staff/orders" className={styles.iconBtn}>
                                         <span className={styles.iconCircle} aria-hidden="true">
                                             <FaBoxOpen size={18}/>

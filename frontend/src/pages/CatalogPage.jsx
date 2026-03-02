@@ -16,7 +16,7 @@ function useQuery() {
 export default function CatalogPage() {
     const query = useQuery();
 
-    const [categories, setCategories] = useState([{id: null, name: 'Все'}]);
+    const [categories, setCategories] = useState([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
 
     const [products, setProducts] = useState([]);
@@ -36,7 +36,7 @@ export default function CatalogPage() {
                 const data = await getCategories();
                 if (cancelled) return;
 
-                setCategories([{id: null, name: 'Все'}, ...data]);
+                setCategories(Array.isArray(data) ? data : []);
             } catch (e) {
                 if (cancelled) return;
                 setError(e.message || 'Ошибка загрузки категорий');
@@ -78,19 +78,38 @@ export default function CatalogPage() {
         };
     }, [selectedCategoryId, search]);
 
-    const categoryNames = categories.map(c => c.name);
-    const selectedCategoryName = categories.find(c => c.id === selectedCategoryId)?.name || 'Все';
-
-    const categoryNameToId = useMemo(() => {
+    const categoryMap = useMemo(() => {
         const map = new Map();
-        categories.forEach(c => map.set(c.name, c.id));
+        categories.forEach((category) => {
+            map.set(category.id, category);
+        });
         return map;
     }, [categories]);
 
-    const handleSelectCategory = (name) => {
-        const id = categoryNameToId.get(name);
-        setSelectedCategoryId(id ?? null);
-    };
+    const categoryTree = useMemo(() => {
+        const byParent = new Map();
+        categories.forEach((category) => {
+            const parentId = category.parent ?? null;
+            if (!byParent.has(parentId)) {
+                byParent.set(parentId, []);
+            }
+            byParent.get(parentId).push(category);
+        });
+
+        const sortByName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+        const roots = (byParent.get(null) || []).sort(sortByName);
+        return roots.map((parent) => ({
+            ...parent,
+            children: (byParent.get(parent.id) || []).sort(sortByName),
+        }));
+    }, [categories]);
+
+    const selectedCategory = selectedCategoryId != null ? categoryMap.get(selectedCategoryId) : null;
+    const selectedParentCategory = selectedCategory?.parent ? categoryMap.get(selectedCategory.parent) : selectedCategory;
+    const selectedCategoryName = selectedCategory?.name || 'Все товары';
+    const selectedCategoryPath = selectedCategory?.parent && selectedParentCategory
+        ? `${selectedParentCategory.name} / ${selectedCategory.name}`
+        : selectedCategoryName;
 
     const sortOptions = useMemo(() => ([
         {value: 'default', label: 'По умолчанию'},
@@ -120,18 +139,35 @@ export default function CatalogPage() {
 
     return (
         <div className={styles.catalogWrapper}>
-            <div className={styles.catalogHead}>
-                <div className={styles.catalogTitle}>Каталог товаров</div>
+            <div className={styles.headerRow}>
+                <div className={styles.catalogTitleBlock}>
+                    <div className={styles.catalogTitle}>Каталог товаров</div>
+                    <div className={styles.catalogSub}>
+                        {loading
+                            ? 'Подбираем товары по выбранным фильтрам'
+                            : `${sortedProducts.length} ${sortedProducts.length === 1 ? 'товар' : sortedProducts.length >= 2 && sortedProducts.length <= 4 ? 'товара' : 'товаров'} в выдаче`}
+                    </div>
+                </div>
 
+                <div className={styles.toolbar}>
+                    <div className={styles.chips}>
+                        <div className={styles.chip}>{selectedCategoryPath}</div>
+                        {search ? <div className={styles.chip}>Поиск: {search}</div> : null}
+                        {sortKey !== 'default' ? (
+                            <div className={styles.chip}>
+                                {sortOptions.find((option) => option.value === sortKey)?.label || 'Сортировка'}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
             </div>
 
             <div className={styles.topRow}>
                 <div className={styles.sidebarBlock}>
                     <Sidebar
-                        categories={categoryNames}
-                        selectedCategory={selectedCategoryName}
-                        onSelectCategory={handleSelectCategory}
-
+                        categoryTree={categoryTree}
+                        selectedCategoryId={selectedCategoryId}
+                        onSelectCategory={setSelectedCategoryId}
                         sortValue={sortKey}
                         sortOptions={sortOptions}
                         onSelectSort={setSortKey}
