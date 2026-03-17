@@ -1,5 +1,6 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from './authContext';
+import {useNotify} from './notifyContext';
 
 const CartContext = createContext(null);
 const LS_KEY = 'guest_cart';
@@ -52,6 +53,7 @@ async function readJsonSafe(res) {
 
 export function CartProvider({children}) {
     const {isAuthenticated, accessToken, authFetch, logout} = useAuth();
+    const notify = useNotify();
 
     const [cart, setCart] = useState(() => loadGuestCart());
     const [loading, setLoading] = useState(false);
@@ -207,10 +209,12 @@ export function CartProvider({children}) {
                 body: {product_id: productId, quantity: nextQty},
             });
             await reloadAuthCart();
+        } catch (e) {
+            notify.error(e?.message || 'Не удалось добавить товар в корзину');
         } finally {
             setPending(productId, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending, notify]);
 
     const increaseQuantity = useCallback(async (id) => {
         if (!id) return;
@@ -240,10 +244,12 @@ export function CartProvider({children}) {
                 body: {product_id: id, quantity: nextQty},
             });
             await reloadAuthCart();
+        } catch (e) {
+            notify.error(e?.message || 'Не удалось обновить количество');
         } finally {
             setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending, notify]);
 
     const decreaseCount = useCallback(async (id) => {
         if (!id) return;
@@ -278,10 +284,12 @@ export function CartProvider({children}) {
             }
 
             await reloadAuthCart();
+        } catch (e) {
+            notify.error(e?.message || 'Не удалось изменить количество');
         } finally {
             setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending, notify]);
 
     const removeFromCart = useCallback(async (id) => {
         if (!id) return;
@@ -300,10 +308,12 @@ export function CartProvider({children}) {
         try {
             await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
             await reloadAuthCart();
+        } catch (e) {
+            notify.error(e?.message || 'Не удалось удалить товар');
         } finally {
             setPending(id, false);
         }
-    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending]);
+    }, [isAuthenticated, accessToken, cart, authedRequest, reloadAuthCart, setPending, notify]);
 
     const clearCart = useCallback(async () => {
         if (!isAuthenticated) {
@@ -319,10 +329,12 @@ export function CartProvider({children}) {
         try {
             await authedRequest('/api/cart/clear/', {method: 'POST', body: {}});
             await reloadAuthCart();
+        } catch (e) {
+            notify.error(e?.message || 'Не удалось очистить корзину');
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart]);
+    }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart, notify]);
 
     const value = useMemo(() => ({
         cart,

@@ -44,7 +44,7 @@ export default function Header({favoriteCount = 0}) {
     };
 
     const handleLogout = async () => {
-        await logout();
+        await logout({silent: false});
         navigate('/login');
     };
 

@@ -1,0 +1,133 @@
+.stack {
+    position: fixed;
+    top: 88px;
+    right: 16px;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(380px, calc(100vw - 24px));
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-radius: 14px;
+    border: 1px solid #d8e0eb;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    color: #1f2937;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    padding: 11px 12px;
+    animation: toastIn 160ms ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #3b82f6;
+}
+
+.toast_success {
+    background: linear-gradient(180deg, #f4fff8 0%, #ecfdf3 100%);
+    border-color: #b7e4c7;
+    color: #17603c;
+}
+
+.toast_success::before {
+    background: #22c55e;
+}
+
+.toast_error {
+    background: linear-gradient(180deg, #fff5f6 0%, #fff1f2 100%);
+    border-color: #f5c1c9;
+    color: #9f2f44;
+}
+
+.toast_error::before {
+    background: #e11d48;
+}
+
+.toast_info {
+    background: linear-gradient(180deg, #f3f8ff 0%, #eff6ff 100%);
+    border-color: #c2d8f7;
+    color: #1e4f8a;
+}
+
+.toast_info::before {
+    background: #3b82f6;
+}
+
+.toast_warning {
+    background: linear-gradient(180deg, #fffaf2 0%, #fff7ed 100%);
+    border-color: #f3d1a0;
+    color: #8d5315;
+}
+
+.toast_warning::before {
+    background: #f59e0b;
+}
+
+.body {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+.text {
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.close:hover {
+    background: rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 768px) {
+    .stack {
+        top: 72px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

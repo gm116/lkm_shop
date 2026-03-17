@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 
 import {useCart} from '../store/cartContext';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 
 import styles from '../styles/CheckoutPage.module.css';
 
@@ -15,6 +16,7 @@ function buildFullName(prefill) {
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
+    const notify = useNotify();
 
     const {cart, clearCart} = useCart();
     const {accessToken, isAuthenticated, authFetch, logout} = useAuth();
@@ -41,6 +43,10 @@ export default function CheckoutPage() {
     const [pvzCity, setPvzCity] = useState('');
 
     const [comment, setComment] = useState('');
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     const selectedAddress = useMemo(() => {
         const idNum = Number(selectedAddressId);
@@ -155,7 +161,9 @@ export default function CheckoutPage() {
         setError('');
 
         if (!canSubmit) {
-            setError('Заполни обязательные поля');
+            const message = 'Заполни обязательные поля';
+            setError(message);
+            notify.warning(message);
             return;
         }
 
@@ -232,6 +240,7 @@ export default function CheckoutPage() {
             if (!confirmationUrl) throw new Error('Не пришел confirmation_url');
 
             await clearCart();
+            notify.success('Заказ создан, перенаправляю на оплату');
 
             navigate('/checkout/redirect', {
                 replace: true,

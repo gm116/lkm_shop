@@ -1,33 +1,60 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 import styles from '../styles/Auth.module.css';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const { register } = useAuth();
+    const notify = useNotify();
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [passwordConfirm, setPasswordConfirm] = useState('');
 
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        setError('');
         setLoading(true);
 
         try {
+            const usernameValue = username.trim();
+            const emailValue = email.trim();
+
+            if (!usernameValue) {
+                notify.warning('Введите логин');
+                return;
+            }
+
+            if (emailValue) {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(emailValue)) {
+                    notify.warning('Введите корректный email');
+                    return;
+                }
+            }
+
+            if (password.length < 8) {
+                notify.warning('Пароль должен быть не короче 8 символов');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                notify.warning('Пароли не совпадают');
+                return;
+            }
+
             await register({
-                username: username.trim(),
-                email: email.trim(),
+                username: usernameValue,
+                email: emailValue,
                 password,
             });
             navigate('/profile');
         } catch (err) {
-            setError(err.message || 'Ошибка регистрации');
+            // Уведомление уже показывает authContext
         } finally {
             setLoading(false);
         }
@@ -38,8 +65,6 @@ export default function RegisterPage() {
             <h2 className={styles.title}>Регистрация</h2>
 
             <div className={styles.card}>
-                {error && <div className={styles.error}>{error}</div>}
-
                 <form className={styles.form} onSubmit={onSubmit}>
                     <input
                         className={styles.input}
@@ -52,6 +77,8 @@ export default function RegisterPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email (необязательно)"
+                        type="email"
+                        autoComplete="email"
                     />
                     <input
                         className={styles.input}
@@ -59,9 +86,21 @@ export default function RegisterPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Пароль (минимум 8 символов)"
                         type="password"
+                        autoComplete="new-password"
+                    />
+                    <input
+                        className={styles.input}
+                        value={passwordConfirm}
+                        onChange={(e) => setPasswordConfirm(e.target.value)}
+                        placeholder="Повторите пароль"
+                        type="password"
+                        autoComplete="new-password"
                     />
 
-                    <button className={styles.btn} disabled={loading || !username.trim() || password.length < 8}>
+                    <button
+                        className={styles.btn}
+                        disabled={loading || !username.trim() || password.length < 8 || !passwordConfirm}
+                    >
                         {loading ? 'Создаём...' : 'Зарегистрироваться'}
                     </button>
 

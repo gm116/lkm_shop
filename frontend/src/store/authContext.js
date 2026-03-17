@@ -1,9 +1,64 @@
 import {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import {loginUser, logoutUser, refreshAccessToken, registerUser} from '../api/auth';
+import {useNotify} from './notifyContext';
 
 const AuthContext = createContext(null);
 
+function normalizeAuthErrorMessage(rawMessage, mode = 'login') {
+    const message = String(rawMessage || '').trim();
+    const lower = message.toLowerCase();
+
+    if (mode === 'login') {
+        if (
+            lower.includes('no active account') ||
+            lower.includes('invalid credentials') ||
+            lower.includes('invalid_grant') ||
+            (lower.includes('invalid') && lower.includes('password')) ||
+            lower.includes('credentials')
+        ) {
+            return 'Неверный логин или пароль';
+        }
+    }
+
+    if (lower.includes('already exists') || lower.includes('уже существует')) {
+        if (lower.includes('email')) {
+            return 'Этот email уже занят';
+        }
+        if (lower.includes('username') || lower.includes('логин')) {
+            return 'Этот логин уже занят';
+        }
+        return 'Пользователь с таким логином уже существует';
+    }
+
+    if (lower.includes('username:')) {
+        if (lower.includes('занят') || lower.includes('exists')) {
+            return 'Этот логин уже занят';
+        }
+    }
+
+    if (lower.includes('email:')) {
+        if (lower.includes('занят') || lower.includes('exists')) {
+            return 'Этот email уже занят';
+        }
+        if (lower.includes('valid') || lower.includes('invalid')) {
+            return 'Введите корректный email';
+        }
+    }
+
+    if (lower.includes('password') && (lower.includes('too short') || lower.includes('minimum'))) {
+        return 'Пароль слишком короткий';
+    }
+
+    if (lower.includes('email') && lower.includes('invalid')) {
+        return 'Введите корректный email';
+    }
+
+    if (mode === 'login') return message || 'Ошибка входа';
+    return message || 'Ошибка регистрации';
+}
+
 export function AuthProvider({children}) {
+    const notify = useNotify();
     const [accessToken, setAccessToken] = useState('');
     const [user, setUser] = useState(null);
     const [permissions, setPermissions] = useState(null);
@@ -145,8 +200,13 @@ export function AuthProvider({children}) {
 
             setUser(me);
             setPermissions(perms);
+            notify.success('Регистрация выполнена');
 
             return r;
+        } catch (e) {
+            const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'register');
+            notify.error(friendlyMessage);
+            throw new Error(friendlyMessage);
         } finally {
             setLoading(false);
         }
@@ -166,15 +226,23 @@ export function AuthProvider({children}) {
 
             setUser(me);
             setPermissions(perms);
+            notify.success('Вы вошли в аккаунт');
 
             return r;
+        } catch (e) {
+            const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'login');
+            notify.error(friendlyMessage);
+            throw new Error(friendlyMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    const logout = async () => {
+    const logout = async ({silent = true, message = ''} = {}) => {
         await hardLogout();
+        if (!silent) {
+            notify.info(message || 'Вы вышли из аккаунта');
+        }
     };
 
     const value = useMemo(() => ({

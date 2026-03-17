@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import styles from '../styles/ProfilePage.module.css';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 
 function formatMoney(v) {
     const n = Number(v || 0);
@@ -35,6 +36,7 @@ function isBlank(v) {
 
 export default function ProfilePage() {
     const {accessToken, user, logout, authFetch} = useAuth();
+    const notify = useNotify();
 
     const [meLoading, setMeLoading] = useState(true);
     const [meError, setMeError] = useState('');
@@ -77,7 +79,6 @@ export default function ProfilePage() {
 
     const loadMe = async () => {
         setMeError('');
-        setMeSaved('');
         setMeLoading(true);
 
         try {
@@ -141,7 +142,6 @@ export default function ProfilePage() {
 
     const loadAddresses = async () => {
         setAddrError('');
-        setAddrSaved('');
         setAddrLoading(true);
 
         try {
@@ -354,6 +354,26 @@ export default function ProfilePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        if (meSaved) notify.success(meSaved);
+    }, [meSaved, notify]);
+
+    useEffect(() => {
+        if (meError) notify.error(meError);
+    }, [meError, notify]);
+
+    useEffect(() => {
+        if (addrSaved) notify.success(addrSaved);
+    }, [addrSaved, notify]);
+
+    useEffect(() => {
+        if (addrError) notify.error(addrError);
+    }, [addrError, notify]);
+
+    useEffect(() => {
+        if (ordersError) notify.error(ordersError);
+    }, [ordersError, notify]);
+
     return (
         <div className={styles.page}>
             <div className={styles.header}>
@@ -365,51 +385,11 @@ export default function ProfilePage() {
                 </div>
 
                 <div className={styles.headerRight}>
-                    <button className={styles.btnDark} onClick={logout} type="button">
+                    <button className={styles.btnDark} onClick={() => logout({silent: false})} type="button">
                         Выйти
                     </button>
                 </div>
             </div>
-
-            {(meSaved || meError || addrSaved || addrError || ordersError) && (
-                <div className={styles.notices}>
-                    {meSaved && (
-                        <div className={`${styles.notice} ${styles.noticeOk}`}>
-                            <span>{meSaved}</span>
-                            <button className={styles.noticeClose} onClick={() => setMeSaved('')} type="button">×
-                            </button>
-                        </div>
-                    )}
-                    {meError && (
-                        <div className={`${styles.notice} ${styles.noticeErr}`}>
-                            <span>{meError}</span>
-                            <button className={styles.noticeClose} onClick={() => setMeError('')} type="button">×
-                            </button>
-                        </div>
-                    )}
-                    {addrSaved && (
-                        <div className={`${styles.notice} ${styles.noticeOk}`}>
-                            <span>{addrSaved}</span>
-                            <button className={styles.noticeClose} onClick={() => setAddrSaved('')} type="button">×
-                            </button>
-                        </div>
-                    )}
-                    {addrError && (
-                        <div className={`${styles.notice} ${styles.noticeErr}`}>
-                            <span>{addrError}</span>
-                            <button className={styles.noticeClose} onClick={() => setAddrError('')} type="button">×
-                            </button>
-                        </div>
-                    )}
-                    {ordersError && (
-                        <div className={`${styles.notice} ${styles.noticeErr}`}>
-                            <span>{ordersError}</span>
-                            <button className={styles.noticeClose} onClick={() => setOrdersError('')} type="button">×
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <div className={styles.layout}>
                 <div className={styles.leftCol}>

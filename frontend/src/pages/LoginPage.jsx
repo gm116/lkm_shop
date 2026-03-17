@@ -11,18 +11,16 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
 
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        setError('');
         setLoading(true);
 
         try {
             await login({ username: username.trim(), password });
             navigate('/profile');
         } catch (err) {
-            setError(err.message || 'Ошибка входа');
+            // Уведомление уже показывает authContext
         } finally {
             setLoading(false);
         }
@@ -33,8 +31,6 @@ export default function LoginPage() {
             <h2 className={styles.title}>Вход</h2>
 
             <div className={styles.card}>
-                {error && <div className={styles.error}>{error}</div>}
-
                 <form className={styles.form} onSubmit={onSubmit}>
                     <input
                         className={styles.input}

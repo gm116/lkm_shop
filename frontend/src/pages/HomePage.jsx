@@ -15,6 +15,7 @@ import {
 
 import {getBrands, getCategories, getProducts} from '../api/catalog';
 import styles from '../styles/HomePage.module.css';
+import {useNotify} from '../store/notifyContext';
 
 const HERO_BENEFITS = [
     'Подбор по коду и образцу',
@@ -111,10 +112,15 @@ function ContactCard({title, note, href}) {
 }
 
 export default function HomePage() {
+    const notify = useNotify();
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [products, setProducts] = useState([]);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     useEffect(() => {
         let cancelled = false;

@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import ProductCard from '../components/ProductCard';
 import styles from '../styles/CatalogPage.module.css';
 import {getCategories, getProducts} from '../api/catalog';
+import {useNotify} from '../store/notifyContext';
 
 const SKELETON_COUNT = 8;
 
@@ -14,6 +15,7 @@ function useQuery() {
 }
 
 export default function CatalogPage() {
+    const notify = useNotify();
     const query = useQuery();
     const categoryParam = query.get('category');
     const parsedCategoryId = categoryParam && !Number.isNaN(Number(categoryParam)) ? Number(categoryParam) : null;
@@ -28,6 +30,10 @@ export default function CatalogPage() {
     const [sortKey, setSortKey] = useState('default'); // добавили
 
     const search = query.get('search') || '';
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     useEffect(() => {
         setSelectedCategoryId(parsedCategoryId);

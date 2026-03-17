@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {FaChevronDown} from 'react-icons/fa';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 import styles from '../styles/AdminDashboard.module.css';
 
 const EMPTY_FORM = {
@@ -118,6 +119,7 @@ function getProductPreview(product) {
 
 export default function AdminDashboard() {
     const {authFetch, permissions} = useAuth();
+    const notify = useNotify();
 
     const [loadingMeta, setLoadingMeta] = useState(true);
     const [loadingProducts, setLoadingProducts] = useState(true);
@@ -150,6 +152,14 @@ export default function AdminDashboard() {
     const [importSubmitAttempted, setImportSubmitAttempted] = useState(false);
 
     const canUseAdmin = !!permissions?.is_superuser || !!permissions?.is_staff;
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
+
+    useEffect(() => {
+        if (success) notify.success(success);
+    }, [success, notify]);
 
     const loadMeta = useCallback(async () => {
         setLoadingMeta(true);
@@ -507,9 +517,6 @@ export default function AdminDashboard() {
                         <div className={styles.sub}>Импорт, создание и редактирование товарного каталога</div>
                     </div>
                 </div>
-
-                {error ? <div className={`${styles.notice} ${styles.noticeError}`}>{error}</div> : null}
-                {success ? <div className={`${styles.notice} ${styles.noticeSuccess}`}>{success}</div> : null}
 
                 <div className={styles.modeTabs}>
                     <button

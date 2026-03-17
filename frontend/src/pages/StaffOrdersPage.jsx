@@ -2,6 +2,7 @@ import {useEffect, useMemo, useState, useCallback, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import styles from '../styles/StaffOrdersPage.module.css';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 
 const ORDER_SKELETON_COUNT = 6;
 const PERIOD_PRESETS = [
@@ -162,6 +163,7 @@ function itemImage(it, productImageMap) {
 
 export default function StaffOrdersPage() {
     const {authFetch} = useAuth(); // важно: authFetch должен сам обновлять токены
+    const notify = useNotify();
     const navigate = useNavigate();
     const location = useLocation();
     const initialSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -193,6 +195,10 @@ export default function StaffOrdersPage() {
     const [productImageMap, setProductImageMap] = useState(() => new Map());
     const inFlightRef = useRef(new Set()); // чтобы не дёргать один и тот же product_id параллельно
     const periodMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     const buildListSearch = useCallback((overrides = {}) => {
         const params = new URLSearchParams();
@@ -227,9 +233,11 @@ export default function StaffOrdersPage() {
             if (Array.isArray(data)) setOrders(data);
             else if (Array.isArray(data?.results)) setOrders(data.results);
             else setOrders([]);
+            return true;
         } catch (e) {
             setOrders([]);
             setError(e?.message || 'Ошибка');
+            return false;
         } finally {
             setLoading(false);
         }
@@ -391,11 +399,23 @@ export default function StaffOrdersPage() {
     const handlePresetSelect = (days) => {
         const range = buildPresetRange(days);
         applyPeriod(range.dateFrom, range.dateTo);
+        const preset = PERIOD_PRESETS.find((item) => item.days === days);
+        if (preset) {
+            notify.info(`Применен период: ${preset.label}`);
+        }
     };
 
     const handleApplyCustomPeriod = () => {
-        if (!draftDateFrom || !draftDateTo) return;
+        if (!draftDateFrom || !draftDateTo) {
+            notify.warning('Укажи обе даты периода');
+            return;
+        }
+        if (draftDateFrom > draftDateTo) {
+            notify.warning('Дата начала не может быть позже даты окончания');
+            return;
+        }
         applyPeriod(draftDateFrom, draftDateTo);
+        notify.info('Период обновлен');
     };
 
     const handleTogglePeriodMenu = () => {
@@ -540,7 +560,10 @@ export default function StaffOrdersPage() {
                             <button
                                 type="button"
                                 className={styles.btnLight}
-                                onClick={() => loadOrders(activeStatus)}
+                                onClick={async () => {
+                                    const ok = await loadOrders(activeStatus);
+                                    if (ok) notify.info('Список заказов обновлен');
+                                }}
                                 disabled={loading}
                             >
                                 Обновить

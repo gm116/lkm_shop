@@ -3,6 +3,7 @@ import {Link, useParams} from 'react-router-dom';
 import {FaChevronLeft, FaChevronRight} from 'react-icons/fa';
 
 import {useCart} from '../store/cartContext';
+import {useNotify} from '../store/notifyContext';
 import styles from '../styles/ProductPage.module.css';
 import {getProductById} from '../api/catalog';
 
@@ -11,6 +12,7 @@ const FALLBACK_IMAGE = 'https://via.placeholder.com/900x1200?text=No+image';
 export default function ProductPage() {
     const {id} = useParams();
     const {cart, addToCart, decreaseCount, pendingIds} = useCart();
+    const notify = useNotify();
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -45,6 +47,10 @@ export default function ProductPage() {
     useEffect(() => {
         setActiveImageIndex(0);
     }, [product?.id]);
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     const galleryImages = useMemo(() => {
         if (!product) return [FALLBACK_IMAGE];

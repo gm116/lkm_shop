@@ -2,6 +2,7 @@ import {useEffect, useMemo, useState, useRef, useCallback} from 'react';
 import {Link, useLocation, useParams, useSearchParams} from 'react-router-dom';
 import styles from '../styles/StaffOrderPage.module.css';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 
 const STATUSES = ['new', 'paid', 'shipped', 'completed', 'canceled'];
 
@@ -82,6 +83,7 @@ export default function StaffOrderPage() {
     const location = useLocation();
     const [searchParams] = useSearchParams();
     const {authFetch} = useAuth();
+    const notify = useNotify();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -89,6 +91,10 @@ export default function StaffOrderPage() {
     const [order, setOrder] = useState(null);
 
     const [nextStatus, setNextStatus] = useState('new');
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     const urlGet = useMemo(() => `/api/staff/orders/${id}/`, [id]);
     const urlStatus = useMemo(() => `/api/staff/orders/${id}/status/`, [id]);
@@ -226,7 +232,10 @@ export default function StaffOrderPage() {
 
     const saveStatus = async () => {
         if (!order) return;
-        if (nextStatus === order.status) return;
+        if (nextStatus === order.status) {
+            notify.info('Статус уже выбран');
+            return;
+        }
 
         setError('');
         setSaving(true);
@@ -246,8 +255,10 @@ export default function StaffOrderPage() {
             if (updated) {
                 setOrder(updated);
                 setNextStatus(updated.status || nextStatus);
+                notify.success(`Статус заказа обновлен: ${statusLabel(updated.status || nextStatus)}`);
             } else {
                 await load();
+                notify.success('Статус заказа обновлен');
             }
         } catch (e) {
             setError(e?.message || 'Ошибка');

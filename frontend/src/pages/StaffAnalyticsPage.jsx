@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import styles from '../styles/StaffAnalyticsPage.module.css';
 import {useAuth} from '../store/authContext';
+import {useNotify} from '../store/notifyContext';
 
 const STATUS_LABELS = {
     new: 'Новые',
@@ -301,6 +302,7 @@ function EmptyPanel({text}) {
 
 export default function StaffAnalyticsPage() {
     const {authFetch} = useAuth();
+    const notify = useNotify();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -317,6 +319,10 @@ export default function StaffAnalyticsPage() {
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const periodMenuRef = useRef(null);
     const exportMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (error) notify.error(error);
+    }, [error, notify]);
 
     const loadAnalytics = useCallback(async () => {
         setLoading(true);
@@ -335,9 +341,11 @@ export default function StaffAnalyticsPage() {
             }
 
             setAnalytics(data);
+            return true;
         } catch (e) {
             setAnalytics(null);
             setError(e?.message || 'Ошибка');
+            return false;
         } finally {
             setLoading(false);
         }
@@ -463,11 +471,23 @@ export default function StaffAnalyticsPage() {
     const handlePresetSelect = (days) => {
         const range = buildPresetRange(days);
         applyPeriod(range.dateFrom, range.dateTo);
+        const preset = PERIOD_PRESETS.find((item) => item.days === days);
+        if (preset) {
+            notify.info(`Применен период: ${preset.label}`);
+        }
     };
 
     const handleApplyCustomPeriod = () => {
-        if (!draftDateFrom || !draftDateTo) return;
+        if (!draftDateFrom || !draftDateTo) {
+            notify.warning('Укажи обе даты периода');
+            return;
+        }
+        if (draftDateFrom > draftDateTo) {
+            notify.warning('Дата начала не может быть позже даты окончания');
+            return;
+        }
         applyPeriod(draftDateFrom, draftDateTo);
+        notify.info('Период обновлен');
     };
 
     const handleTogglePeriodMenu = () => {
@@ -512,6 +532,7 @@ export default function StaffAnalyticsPage() {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(blobUrl);
+            notify.success(`Отчет ${format === 'xlsx' ? 'Excel' : 'CSV'} скачан`);
         } catch (e) {
             setError(e?.message || 'Ошибка выгрузки');
         } finally {
@@ -606,7 +627,10 @@ export default function StaffAnalyticsPage() {
                             <button
                                 type="button"
                                 className={styles.btnLight}
-                                onClick={loadAnalytics}
+                                onClick={async () => {
+                                    const ok = await loadAnalytics();
+                                    if (ok) notify.info('Аналитика обновлена');
+                                }}
                                 disabled={loading}
                             >
                                 Обновить
