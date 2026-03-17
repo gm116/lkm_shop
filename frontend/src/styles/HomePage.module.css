@@ -1,0 +1,566 @@
+.page {
+    width: 100%;
+    padding: 18px 16px 34px;
+    background:
+        radial-gradient(circle at top left, rgba(198, 220, 255, 0.28), transparent 25%),
+        radial-gradient(circle at bottom right, rgba(223, 236, 228, 0.24), transparent 26%),
+        #f4f6fb;
+}
+
+.shell {
+    max-width: 1260px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hero,
+.section {
+    border: 1px solid #e3e7ef;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.hero {
+    padding: 16px;
+    border-radius: 20px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+    gap: 12px;
+}
+
+.heroMain,
+.heroSide,
+.panel {
+    min-width: 0;
+}
+
+.heroMain {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.eyebrow {
+    width: fit-content;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.heroTitle,
+.sectionTitle,
+.cardTitle,
+.serviceTitle,
+.categoryTitle,
+.contactTitle,
+.infoTitle {
+    margin: 0;
+    color: #101828;
+}
+
+.heroTitle {
+    max-width: 760px;
+    font-size: clamp(24px, 2.3vw, 34px);
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.heroText,
+.infoText,
+.cardText,
+.serviceText,
+.contactText,
+.notice,
+.emptyState {
+    color: #566171;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.heroText {
+    max-width: 760px;
+    margin: 0;
+}
+
+.heroActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.primaryAction,
+.secondaryAction,
+.categoryCard,
+.contactCard,
+.brandChip {
+    text-decoration: none;
+}
+
+.primaryAction,
+.secondaryAction {
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.primaryAction {
+    background: #111827;
+    border: 1px solid #111827;
+    color: #fff;
+}
+
+.secondaryAction {
+    background: #fff;
+    border: 1px solid #d8dde7;
+    color: #1f2937;
+}
+
+.primaryAction:hover,
+.secondaryAction:hover,
+.categoryCard:hover,
+.contactCard:hover,
+.brandChip:hover {
+    transform: translateY(-1px);
+}
+
+.heroBenefits {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.heroBenefit {
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+    border: 1px solid #e1e6f0;
+    background: #fbfcff;
+    color: #465264;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.heroSide {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.infoCard,
+.card,
+.categoryCard,
+.contactCard {
+    border-radius: 14px;
+    border: 1px solid #e9edf4;
+    background: #fff;
+}
+
+.infoCard {
+    padding: 12px;
+}
+
+.infoTitle {
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.infoText {
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.infoList {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.infoItem {
+    position: relative;
+    padding-left: 12px;
+    color: #445062;
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+.infoItem::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: #2d5ea8;
+}
+
+.notice {
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid #fecaca;
+    background: #fff4f4;
+    color: #9f1d1d;
+    font-weight: 600;
+}
+
+.section {
+    padding: 14px;
+    border-radius: 20px;
+}
+
+.sectionTop {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.sectionTitle {
+    font-size: clamp(19px, 1.8vw, 26px);
+    line-height: 1.15;
+    font-weight: 700;
+}
+
+.productShowcaseLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.productShowcaseMain {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.productShowcaseTitle {
+    margin-bottom: 2px;
+}
+
+.productShowcaseGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 148px));
+    justify-content: start;
+    gap: 8px;
+}
+
+.productShowcaseCard {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 14px;
+    border: 1px solid #edf1f6;
+    background: #fff;
+    padding: 8px;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.productShowcaseImageWrap {
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f8fafd;
+}
+
+.productShowcaseImage,
+.productShowcaseImagePh {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+    display: block;
+}
+
+.productShowcaseImage {
+    object-fit: contain;
+    background: #fff;
+}
+
+.productShowcaseImagePh {
+    background: linear-gradient(135deg, #f2f4f8, #ebeff7);
+}
+
+.productShowcaseName {
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 650;
+    color: #101828;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 32px;
+}
+
+.productShowcasePrice {
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.productsMoreButton {
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid #111827;
+    background: #111827;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 650;
+    text-decoration: none;
+    box-shadow: 0 6px 14px rgba(17, 24, 39, 0.16);
+    align-self: flex-start;
+}
+
+.productsMoreButton:hover {
+    transform: translateY(-1px);
+}
+
+.cardsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.card {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 132px;
+}
+
+.cardIcon,
+.serviceIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: #eef3ff;
+    color: #315b9a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.cardTitle {
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.panel {
+    padding: 12px;
+    border: 0;
+    background: transparent;
+}
+
+.quickPanel {
+    padding: 0;
+}
+
+.contactsPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.serviceList {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+}
+
+.serviceItem {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    background: #f8fbff;
+}
+
+.serviceTitle {
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.serviceText {
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.categoryGrid,
+.contactGrid {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.quickCategoryGrid {
+    margin-top: 6px;
+    gap: 6px;
+}
+
+.categoryCard,
+.contactCard {
+    min-height: 84px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    color: inherit;
+}
+
+.quickCategoryCard {
+    min-height: 68px;
+    padding: 8px 9px;
+}
+
+.categoryTitle,
+.contactTitle {
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.categoryAction,
+.contactAction {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #2d5ea8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.contactsSection {
+    scroll-margin-top: 84px;
+}
+
+.contactFactsRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.contactFact {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #445062;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 8px 10px;
+}
+
+.brandCloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.brandChip {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid #dde4ef;
+    background: #fff;
+    color: #455264;
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.emptyState {
+    min-height: 78px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px dashed #d9e1ef;
+    background: #fafbfd;
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 1080px) {
+    .hero {
+        grid-template-columns: 1fr;
+    }
+
+    .cardsGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .productShowcaseLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .contactFactsRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 860px) {
+    .contactsSection {
+        scroll-margin-top: 132px;
+    }
+
+    .page {
+        padding: 14px 10px 28px;
+    }
+
+    .hero,
+    .section {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .heroTitle {
+        font-size: 22px;
+    }
+
+    .heroBenefits,
+    .categoryGrid,
+    .contactGrid,
+    .cardsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .productShowcaseGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .productShowcaseCard {
+        width: auto;
+    }
+}

@@ -15,9 +15,11 @@ function useQuery() {
 
 export default function CatalogPage() {
     const query = useQuery();
+    const categoryParam = query.get('category');
+    const parsedCategoryId = categoryParam && !Number.isNaN(Number(categoryParam)) ? Number(categoryParam) : null;
 
     const [categories, setCategories] = useState([]);
-    const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState(parsedCategoryId);
 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +28,10 @@ export default function CatalogPage() {
     const [sortKey, setSortKey] = useState('default'); // добавили
 
     const search = query.get('search') || '';
+
+    useEffect(() => {
+        setSelectedCategoryId(parsedCategoryId);
+    }, [parsedCategoryId]);
 
     useEffect(() => {
         let cancelled = false;
