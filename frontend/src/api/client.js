@@ -18,6 +18,30 @@ async function readJsonSafe(res) {
     }
 }
 
+function flattenMessages(value) {
+    if (value == null) return [];
+    if (typeof value === 'string') return [value];
+    if (Array.isArray(value)) {
+        return value.flatMap(flattenMessages);
+    }
+    if (typeof value === 'object') {
+        return Object.entries(value).flatMap(([key, nested]) =>
+            flattenMessages(nested).map((item) => `${key}: ${item}`)
+        );
+    }
+    return [String(value)];
+}
+
+function extractErrorMessage(data, status) {
+    const message = data?.detail || data?.error;
+    if (message) return String(message);
+
+    const flattened = flattenMessages(data).filter(Boolean);
+    if (flattened.length) return flattened.join(' ');
+
+    return `Request failed: ${status}`;
+}
+
 export async function apiGet(path) {
     let res;
     try {
@@ -32,7 +56,7 @@ export async function apiGet(path) {
     const data = await readJsonSafe(res);
 
     if (!res.ok) {
-        const msg = data?.detail || data?.error || `Request failed: ${res.status}`;
+        const msg = extractErrorMessage(data, res.status);
         throw new Error(msg);
     }
 
@@ -59,7 +83,7 @@ export async function apiPost(path, body) {
     const data = await readJsonSafe(res);
 
     if (!res.ok) {
-        const msg = data?.detail || data?.error || JSON.stringify(data) || `Request failed: ${res.status}`;
+        const msg = extractErrorMessage(data, res.status);
         throw new Error(msg);
     }
 
