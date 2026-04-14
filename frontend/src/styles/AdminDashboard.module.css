@@ -494,7 +494,8 @@
 }
 
 .primaryBtn,
-.secondaryBtn {
+.secondaryBtn,
+.dangerBtn {
     border: 1px solid #d7dce5;
     border-radius: 12px;
     padding: 11px 15px;
@@ -516,14 +517,22 @@
     color: #111827;
 }
 
+.dangerBtn {
+    background: #fff5f6;
+    color: #b54757;
+    border-color: #f6c2c7;
+}
+
 .primaryBtn:hover,
 .secondaryBtn:hover,
+.dangerBtn:hover,
 .pageBtn:hover {
     transform: translateY(-1px);
 }
 
 .primaryBtn:disabled,
-.secondaryBtn:disabled {
+.secondaryBtn:disabled,
+.dangerBtn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
 }
@@ -794,7 +803,23 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    gap: 6px;
+}
+
+.rowActions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rowBtn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .productName {

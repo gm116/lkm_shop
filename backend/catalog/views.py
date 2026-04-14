@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import BasePermission
 from django.db.models import Q
+from django.db.models.deletion import ProtectedError
+from django.db import transaction
 
 from .models import Category, Brand, Product
 from .serializers import (
@@ -161,6 +163,42 @@ class AdminProductDetailView(APIView):
     def put(self, request, pk: int):
         return self.patch(request, pk)
 
+    def delete(self, request, pk: int):
+        try:
+            with transaction.atomic():
+                product = Product.objects.select_for_update().get(id=pk)
+
+                blockers = []
+
+                in_carts = product.cart_items.count()
+                if in_carts:
+                    blockers.append(f'товар находится в корзинах ({in_carts})')
+
+                in_active_orders = product.order_items.filter(order__status__in=['new', 'paid', 'shipped']).count()
+                if in_active_orders:
+                    blockers.append(f'товар участвует в активных заказах ({in_active_orders})')
+
+                reviews_count = product.reviews.count()
+                if reviews_count:
+                    blockers.append(f'у товара есть отзывы ({reviews_count})')
+
+                if blockers:
+                    return Response(
+                        {'detail': 'Нельзя удалить товар: ' + '; '.join(blockers)},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                product.delete()
+        except Product.DoesNotExist:
+            return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
+        except ProtectedError:
+            return Response(
+                {'detail': 'Нельзя удалить товар: есть связанные записи'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AdminCategoryListCreateView(APIView):
     permission_classes = [IsCatalogAdmin]
@@ -200,6 +238,36 @@ class AdminCategoryDetailView(APIView):
     def put(self, request, pk: int):
         return self.patch(request, pk)
 
+    def delete(self, request, pk: int):
+        try:
+            category = self.get_queryset().get(id=pk)
+        except Category.DoesNotExist:
+            return Response({'detail': 'Категория не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+        blockers = []
+        child_count = category.children.count()
+        if child_count:
+            blockers.append(f'есть подкатегории ({child_count})')
+
+        products_count = category.products.count()
+        if products_count:
+            blockers.append(f'есть товары в категории ({products_count})')
+
+        if blockers:
+            return Response(
+                {'detail': 'Нельзя удалить категорию: ' + '; '.join(blockers)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            category.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'Нельзя удалить категорию: есть связанные данные'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AdminBrandListCreateView(APIView):
     permission_classes = [IsCatalogAdmin]
@@ -238,6 +306,28 @@ class AdminBrandDetailView(APIView):
 
     def put(self, request, pk: int):
         return self.patch(request, pk)
+
+    def delete(self, request, pk: int):
+        try:
+            brand = self.get_queryset().get(id=pk)
+        except Brand.DoesNotExist:
+            return Response({'detail': 'Бренд не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        products_count = brand.products.count()
+        if products_count:
+            return Response(
+                {'detail': f'Нельзя удалить бренд: есть связанные товары ({products_count})'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            brand.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'Нельзя удалить бренд: есть связанные данные'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminProductImportView(APIView):

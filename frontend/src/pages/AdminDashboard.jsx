@@ -125,6 +125,7 @@ export default function AdminDashboard() {
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [saving, setSaving] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [deletingKey, setDeletingKey] = useState('');
 
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -502,6 +503,91 @@ export default function AdminDashboard() {
             is_active: !!brand.is_active,
         });
         window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    const handleDeleteProduct = async (product) => {
+        if (!window.confirm(`Удалить товар «${product.name}»?`)) return;
+
+        setError('');
+        setSuccess('');
+        const lockKey = `product:${product.id}`;
+        setDeletingKey(lockKey);
+
+        try {
+            const res = await authFetch(`/api/catalog/admin/products/${product.id}/`, {method: 'DELETE'});
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось удалить товар');
+            }
+
+            if (editingProductId === product.id) {
+                resetProductForm();
+            }
+
+            const nextPage = products.length === 1 && page > 1 ? page - 1 : page;
+            await loadProducts(search, nextPage);
+            setSuccess(`Товар «${product.name}» удален`);
+        } catch (e) {
+            setError(e?.message || 'Ошибка удаления товара');
+        } finally {
+            setDeletingKey('');
+        }
+    };
+
+    const handleDeleteCategory = async (category) => {
+        if (!window.confirm(`Удалить категорию «${category.name}»?`)) return;
+
+        setError('');
+        setSuccess('');
+        const lockKey = `category:${category.id}`;
+        setDeletingKey(lockKey);
+
+        try {
+            const res = await authFetch(`/api/catalog/admin/categories/${category.id}/`, {method: 'DELETE'});
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось удалить категорию');
+            }
+
+            if (editingCategoryId === category.id) {
+                resetCategoryForm();
+            }
+
+            await loadMeta();
+            setSuccess(`Категория «${category.name}» удалена`);
+        } catch (e) {
+            setError(e?.message || 'Ошибка удаления категории');
+        } finally {
+            setDeletingKey('');
+        }
+    };
+
+    const handleDeleteBrand = async (brand) => {
+        if (!window.confirm(`Удалить бренд «${brand.name}»?`)) return;
+
+        setError('');
+        setSuccess('');
+        const lockKey = `brand:${brand.id}`;
+        setDeletingKey(lockKey);
+
+        try {
+            const res = await authFetch(`/api/catalog/admin/brands/${brand.id}/`, {method: 'DELETE'});
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось удалить бренд');
+            }
+
+            if (editingBrandId === brand.id) {
+                resetBrandForm();
+            }
+
+            await loadMeta();
+            setSuccess(`Бренд «${brand.name}» удален`);
+        } catch (e) {
+            setError(e?.message || 'Ошибка удаления бренда');
+        } finally {
+            setDeletingKey('');
+        }
     };
 
     if (!canUseAdmin) {
@@ -1033,13 +1119,24 @@ export default function AdminDashboard() {
                                                 <div className={styles.productSide}>
                                                     <div className={styles.productPrice}>{formatMoney(product.price)} ₽</div>
                                                     <div className={styles.productMeta}>{formatDateTime(product.created_at)}</div>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.secondaryBtn}
-                                                        onClick={() => startEditProduct(product)}
-                                                    >
-                                                        Редактировать
-                                                    </button>
+                                                    <div className={styles.rowActions}>
+                                                        <button
+                                                            type="button"
+                                                            className={`${styles.secondaryBtn} ${styles.rowBtn}`}
+                                                            onClick={() => startEditProduct(product)}
+                                                            disabled={deletingKey === `product:${product.id}`}
+                                                        >
+                                                            Редактировать
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={`${styles.dangerBtn} ${styles.rowBtn}`}
+                                                            onClick={() => handleDeleteProduct(product)}
+                                                            disabled={deletingKey === `product:${product.id}`}
+                                                        >
+                                                            {deletingKey === `product:${product.id}` ? 'Удаляю…' : 'Удалить'}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -1100,13 +1197,24 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className={styles.productSide}>
-                                                    <button
-                                                        type="button"
-                                                        className={styles.secondaryBtn}
-                                                        onClick={() => startEditCategory(category)}
-                                                    >
-                                                        Редактировать
-                                                    </button>
+                                                    <div className={styles.rowActions}>
+                                                        <button
+                                                            type="button"
+                                                            className={`${styles.secondaryBtn} ${styles.rowBtn}`}
+                                                            onClick={() => startEditCategory(category)}
+                                                            disabled={deletingKey === `category:${category.id}`}
+                                                        >
+                                                            Редактировать
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={`${styles.dangerBtn} ${styles.rowBtn}`}
+                                                            onClick={() => handleDeleteCategory(category)}
+                                                            disabled={deletingKey === `category:${category.id}`}
+                                                        >
+                                                            {deletingKey === `category:${category.id}` ? 'Удаляю…' : 'Удалить'}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -1128,13 +1236,24 @@ export default function AdminDashboard() {
                                                 <div className={styles.productMeta}>{brand.is_active ? 'Активен' : 'Скрыт'}</div>
                                             </div>
                                             <div className={styles.productSide}>
-                                                <button
-                                                    type="button"
-                                                    className={styles.secondaryBtn}
-                                                    onClick={() => startEditBrand(brand)}
-                                                >
-                                                    Редактировать
-                                                </button>
+                                                <div className={styles.rowActions}>
+                                                    <button
+                                                        type="button"
+                                                        className={`${styles.secondaryBtn} ${styles.rowBtn}`}
+                                                        onClick={() => startEditBrand(brand)}
+                                                        disabled={deletingKey === `brand:${brand.id}`}
+                                                    >
+                                                        Редактировать
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`${styles.dangerBtn} ${styles.rowBtn}`}
+                                                        onClick={() => handleDeleteBrand(brand)}
+                                                        disabled={deletingKey === `brand:${brand.id}`}
+                                                    >
+                                                        {deletingKey === `brand:${brand.id}` ? 'Удаляю…' : 'Удалить'}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
