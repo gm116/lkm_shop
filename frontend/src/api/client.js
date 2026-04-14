@@ -25,9 +25,7 @@ function flattenMessages(value) {
         return value.flatMap(flattenMessages);
     }
     if (typeof value === 'object') {
-        return Object.entries(value).flatMap(([key, nested]) =>
-            flattenMessages(nested).map((item) => `${key}: ${item}`)
-        );
+        return Object.values(value).flatMap(flattenMessages);
     }
     return [String(value)];
 }
@@ -36,10 +34,10 @@ function extractErrorMessage(data, status) {
     const message = data?.detail || data?.error;
     if (message) return String(message);
 
-    const flattened = flattenMessages(data).filter(Boolean);
+    const flattened = Array.from(new Set(flattenMessages(data).filter(Boolean)));
     if (flattened.length) return flattened.join(' ');
 
-    return `Request failed: ${status}`;
+    return `Ошибка запроса: ${status}`;
 }
 
 export async function apiGet(path) {
@@ -50,7 +48,7 @@ export async function apiGet(path) {
             credentials: 'include',
         });
     } catch (e) {
-        throw new Error(e?.message || 'Network error');
+        throw new Error(e?.message || 'Ошибка сети');
     }
 
     const data = await readJsonSafe(res);
@@ -61,7 +59,7 @@ export async function apiGet(path) {
     }
 
     if (data && data.__raw) {
-        throw new Error('API returned non-JSON response. Check proxy / API base URL.');
+        throw new Error('API вернул не-JSON ответ. Проверь прокси и базовый URL API.');
     }
 
     return data;
@@ -77,7 +75,7 @@ export async function apiPost(path, body) {
             body: JSON.stringify(body),
         });
     } catch (e) {
-        throw new Error(e?.message || 'Network error');
+        throw new Error(e?.message || 'Ошибка сети');
     }
 
     const data = await readJsonSafe(res);
@@ -88,7 +86,7 @@ export async function apiPost(path, body) {
     }
 
     if (data && data.__raw) {
-        throw new Error('API returned non-JSON response. Check proxy / API base URL.');
+        throw new Error('API вернул не-JSON ответ. Проверь прокси и базовый URL API.');
     }
 
     return data;

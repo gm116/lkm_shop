@@ -83,13 +83,13 @@ export function CartProvider({children}) {
 
         if (res.status === 401) {
             await logout();
-            throw new Error('Unauthorized');
+            throw new Error('Не авторизован');
         }
 
         const data = await readJsonSafe(res);
 
         if (!res.ok) {
-            const msg = data?.detail || data?.error || 'Request failed';
+            const msg = data?.detail || data?.error || 'Ошибка запроса';
             throw new Error(msg);
         }
 

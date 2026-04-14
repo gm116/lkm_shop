@@ -62,6 +62,14 @@ export default function LoginPage() {
                         <button
                             type="button"
                             className={styles.link}
+                            onClick={() => navigate('/forgot-password')}
+                        >
+                            Забыли пароль?
+                        </button>
+
+                        <button
+                            type="button"
+                            className={styles.link}
                             onClick={() => navigate('/catalog')}
                         >
                             В каталог

@@ -85,7 +85,7 @@ class ProductDetailView(APIView):
         try:
             obj = Product.objects.select_related('category', 'brand').prefetch_related('images').get(id=pk, is_active=True)
         except Product.DoesNotExist:
-            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(ProductDetailSerializer(obj).data, status=status.HTTP_200_OK)
 

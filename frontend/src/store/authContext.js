@@ -45,6 +45,19 @@ function normalizeAuthErrorMessage(rawMessage, mode = 'login') {
         }
     }
 
+    if (lower.includes('too similar to the username')) {
+        return 'Пароль слишком похож на логин';
+    }
+    if (lower.includes('too similar to the email')) {
+        return 'Пароль слишком похож на email';
+    }
+    if (lower.includes('too common')) {
+        return 'Пароль слишком простой';
+    }
+    if (lower.includes('entirely numeric')) {
+        return 'Пароль не должен состоять только из цифр';
+    }
+
     if (lower.includes('password') && (lower.includes('too short') || lower.includes('minimum'))) {
         return 'Пароль слишком короткий';
     }
@@ -76,7 +89,7 @@ export function AuthProvider({children}) {
         });
 
         if (!res.ok) {
-            throw new Error('Unauthorized');
+            throw new Error('Не авторизован');
         }
 
         return res.json();
@@ -92,7 +105,7 @@ export function AuthProvider({children}) {
         });
 
         if (!res.ok) {
-            throw new Error('Unauthorized');
+            throw new Error('Не авторизован');
         }
 
         return res.json();

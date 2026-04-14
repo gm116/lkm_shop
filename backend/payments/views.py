@@ -121,7 +121,7 @@ class CreatePaymentView(APIView):
 
             # Если у тебя заказ привязан к пользователю — включи проверку:
             if hasattr(order, 'user_id') and order.user_id != request.user.id:
-                return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"detail": "Недостаточно прав"}, status=status.HTTP_403_FORBIDDEN)
 
             if Payment.objects.filter(order=order, status=Payment.Status.SUCCEEDED).exists() or getattr(order, 'is_paid', False):
                 return Response({"detail": "Заказ уже оплачен"}, status=status.HTTP_400_BAD_REQUEST)
@@ -204,7 +204,7 @@ class YooKassaWebhookView(APIView):
                 event,
                 order_id_from_metadata,
             )
-            return Response({"detail": "bad payload"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Некорректные данные webhook"}, status=status.HTTP_400_BAD_REQUEST)
 
         p = Payment.objects.filter(provider='yookassa', provider_payment_id=provider_payment_id).select_related('order').first()
         if not p:
@@ -227,11 +227,11 @@ class YooKassaWebhookView(APIView):
         if amount is not None:
             try:
                 if Decimal(str(amount)) != p.amount_value:
-                    return Response({"detail": "amount mismatch"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"detail": "Сумма платежа не совпадает"}, status=status.HTTP_400_BAD_REQUEST)
             except Exception:
                 pass
         if currency and currency != p.currency:
-            return Response({"detail": "currency mismatch"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Валюта платежа не совпадает"}, status=status.HTTP_400_BAD_REQUEST)
 
         p.status = new_status
         p.raw = payload
@@ -269,7 +269,7 @@ class PaymentSyncView(APIView):
             return Response({"detail": "Платёж не найден"}, status=status.HTTP_404_NOT_FOUND)
 
         if getattr(p.order, 'user_id', None) != request.user.id:
-            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Недостаточно прав"}, status=status.HTTP_403_FORBIDDEN)
 
         data = fetch_payment(p.provider_payment_id)
         new_status = data.get("status") or p.status

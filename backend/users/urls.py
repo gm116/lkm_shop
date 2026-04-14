@@ -1,11 +1,14 @@
 from django.urls import path
-from .views import RegisterView, LoginView, RefreshView, LogoutView, MeView, MePermissionsView
+from .views import RegisterView, LoginView, RefreshView, LogoutView, MeView, MePermissionsView, PasswordResetRequestView, PasswordResetConfirmView, PasswordResetValidateView
 from .address_api import AddressListCreateView, AddressDetailView, AddressSetDefaultView
 from .me_api import MePrefillView
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
     path('login/', LoginView.as_view()),
+    path('password-reset/request/', PasswordResetRequestView.as_view()),
+    path('password-reset/validate/', PasswordResetValidateView.as_view()),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view()),
     path('refresh/', RefreshView.as_view()),
     path('logout/', LogoutView.as_view()),
     path('me/', MeView.as_view()),

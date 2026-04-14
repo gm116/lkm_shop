@@ -43,15 +43,15 @@ def _get_locked_product(product_id: int) -> Product:
     try:
         return Product.objects.select_for_update().get(id=product_id)
     except Product.DoesNotExist as exc:
-        raise ValidationError({'detail': f'Product not found: {product_id}'}) from exc
+        raise ValidationError({'detail': f'Товар не найден: {product_id}'}) from exc
 
 
 def _validate_cart_quantity(product: Product, quantity: int):
     if not product.is_active:
-        raise ValidationError({'detail': f'Product unavailable: {product.id}'})
+        raise ValidationError({'detail': f'Товар недоступен: {product.id}'})
 
     if quantity > product.stock:
-        raise ValidationError({'detail': f'Not enough stock for product_id={product.id}'})
+        raise ValidationError({'detail': f'Недостаточно остатка для товара id={product.id}'})
 
 
 class CartDetailView(APIView):
@@ -132,7 +132,7 @@ class CartItemDeleteView(APIView):
 
         deleted, _ = CartItem.objects.filter(cart=cart, id=item_id).delete()
         if deleted == 0:
-            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Позиция корзины не найдена'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -24,7 +24,7 @@ async function request(path, {method = 'GET', token = '', body = null} = {}) {
     }
 
     if (!res.ok) {
-        const msg = data?.detail || 'Request failed';
+        const msg = data?.detail || 'Ошибка запроса';
         throw new Error(msg);
     }
 

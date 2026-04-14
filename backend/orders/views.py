@@ -34,7 +34,7 @@ class OrderCreateFromCartView(APIView):
             )
 
             if not cart_items:
-                raise ValidationError({'detail': 'Cart is empty'})
+                raise ValidationError({'detail': 'Корзина пуста'})
 
             product_ids = [item.product_id for item in cart_items]
             locked_products = {
@@ -75,10 +75,10 @@ class OrderCreateFromCartView(APIView):
                 product = locked_products.get(cart_item.product_id)
 
                 if not product or not product.is_active:
-                    raise ValidationError({'detail': 'Product unavailable'})
+                    raise ValidationError({'detail': 'Товар недоступен'})
 
                 if product.stock < cart_item.quantity:
-                    raise ValidationError({'detail': f'Not enough stock for product_id={product.id}'})
+                    raise ValidationError({'detail': f'Недостаточно остатка для товара id={product.id}'})
 
                 price = product.price
                 quantity = cart_item.quantity
@@ -133,6 +133,6 @@ class OrderDetailView(APIView):
                 .get(id=order_id, user=request.user)
             )
         except Order.DoesNotExist:
-            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Заказ не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(serialize_order(o), status=status.HTTP_200_OK)

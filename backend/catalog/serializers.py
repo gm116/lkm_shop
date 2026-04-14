@@ -348,10 +348,6 @@ class AdminBrandSerializer(serializers.Serializer):
         instance.save()
         return instance
 
-    def create(self, validated_data):
-        parent_id = validated_data.pop('parent_id', None)
-        return Category.objects.create(parent_id=parent_id, **validated_data)
-
 
 class AdminProductImportSerializer(serializers.Serializer):
     file = serializers.FileField()
