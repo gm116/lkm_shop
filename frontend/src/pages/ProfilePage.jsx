@@ -593,7 +593,10 @@ export default function ProfilePage() {
 
             <div className={styles.layout}>
                 <div className={styles.leftCol}>
-                    <section className={styles.card}>
+                    <section
+                        className={`${styles.card} ${meLoading ? styles.loadingProfileCard : ''}`}
+                        aria-busy={meLoading}
+                    >
                         <div className={styles.cardHead}>
                             <div>
                                 <div className={styles.cardTitle}>Мои данные</div>
@@ -643,7 +646,18 @@ export default function ProfilePage() {
                         </div>
 
                         {meLoading ? (
-                            <div className={styles.skeleton}>Загрузка…</div>
+                            <div className={styles.profileSkeleton}>
+                                <div className={styles.profileSkeletonGrid}>
+                                    {[0, 1, 2, 3].map((i) => (
+                                        <div className={styles.profileSkeletonCell} key={`profile-sk-${i}`}>
+                                            <div className={styles.skLabel}/>
+                                            <div className={styles.skLine}/>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className={styles.skInput}/>
+                                <div className={styles.skInput}/>
+                            </div>
                         ) : (
                             <div className={styles.profileForm}>
                                 {!editMode ? (
@@ -769,7 +783,10 @@ export default function ProfilePage() {
                         )}
                     </section>
 
-                    <section className={`${styles.card} ${styles.compactCard}`}>
+                    <section
+                        className={`${styles.card} ${styles.compactCard} ${addrLoading ? styles.loadingAddressesCard : ''}`}
+                        aria-busy={addrLoading}
+                    >
                         <div className={styles.cardHead}>
                             <div>
                                 <div className={styles.cardTitle}>Адреса</div>
@@ -786,7 +803,22 @@ export default function ProfilePage() {
                         </div>
 
                         {addrLoading ? (
-                            <div className={styles.skeleton}>Загрузка…</div>
+                            <div className={styles.addressSkeletonList}>
+                                {[0, 1, 2].map((i) => (
+                                    <div className={styles.addressSkeletonCard} key={`addr-sk-${i}`}>
+                                        <div className={styles.addressSkeletonTop}>
+                                            <div className={styles.skTitle}/>
+                                            <div className={styles.addressSkeletonActions}>
+                                                <div className={styles.skBtn}/>
+                                                <div className={styles.skBtn}/>
+                                            </div>
+                                        </div>
+                                        <div className={styles.skLine}/>
+                                        <div className={styles.skLine}/>
+                                        <div className={styles.skLineShort}/>
+                                    </div>
+                                ))}
+                            </div>
                         ) : addresses.length === 0 ? (
                             <div className={styles.empty}>Адресов пока нет</div>
                         ) : (
@@ -840,7 +872,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className={styles.rightCol}>
-                    <section className={styles.card}>
+                    <section
+                        className={`${styles.card} ${ordersLoading ? styles.loadingOrdersCard : ''}`}
+                        aria-busy={ordersLoading}
+                    >
                         <div className={styles.cardHead}>
                             <div>
                                 <div className={styles.cardTitle}>Мои заказы</div>
@@ -848,7 +883,25 @@ export default function ProfilePage() {
                         </div>
 
                         {ordersLoading ? (
-                            <div className={styles.skeleton}>Загрузка…</div>
+                            <div className={styles.ordersSkeletonList}>
+                                {[0, 1, 2].map((i) => (
+                                    <div className={styles.orderSkeletonCard} key={`order-sk-${i}`}>
+                                        <div className={styles.orderSkeletonSummary}>
+                                            <div className={styles.orderSkeletonLeft}>
+                                                <div className={styles.skTitle}/>
+                                                <div className={styles.orderSkeletonBadges}>
+                                                    <div className={styles.skBadge}/>
+                                                    <div className={styles.skBadge}/>
+                                                </div>
+                                            </div>
+                                            <div className={styles.orderSkeletonRight}>
+                                                <div className={styles.skTotal}/>
+                                                <div className={styles.skLineShort}/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         ) : orders.length === 0 ? (
                             <div className={styles.empty}>Заказов пока нет</div>
                         ) : (

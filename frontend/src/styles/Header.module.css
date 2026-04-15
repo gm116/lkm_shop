@@ -99,6 +99,12 @@
     position: relative;
 }
 
+.rightLoading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .iconBtn {
     color: #111827;
     text-decoration: none;
@@ -164,6 +170,55 @@
     border: none;
     cursor: pointer;
     font: inherit;
+}
+
+.iconBtnSkeleton {
+    pointer-events: none;
+}
+
+.iconBtnSkeleton:hover {
+    background: transparent;
+}
+
+.iconCircleSkeleton,
+.iconLabelSkeleton {
+    position: relative;
+    overflow: hidden;
+    background: #e8ecf4;
+}
+
+.iconCircleSkeleton::after,
+.iconLabelSkeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: headerSkeletonShimmer 1.2s infinite;
+}
+
+.iconCircleSkeleton {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    border: 1px solid #e7e9f2;
+}
+
+.iconLabelSkeleton {
+    width: 42px;
+    height: 10px;
+    border-radius: 6px;
+}
+
+@keyframes headerSkeletonShimmer {
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 /* адаптив */

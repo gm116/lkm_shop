@@ -12,7 +12,7 @@ export default function Header({favoriteCount = 0}) {
     const searchInput = useRef(null);
 
     const {cart} = useCart();
-    const {isAuthenticated, logout, permissions} = useAuth();
+    const {isAuthenticated, logout, permissions, loading} = useAuth();
     const isStaff =
         !!permissions?.is_superuser ||
         !!permissions?.is_staff ||
@@ -72,78 +72,91 @@ export default function Header({favoriteCount = 0}) {
                 </div>
 
                 <div className={styles.right}>
-                    {!isStaff && (
-                        <>
-                            <Link to="/cart" className={styles.iconBtn}>
-                                <span className={styles.iconCircle} aria-hidden="true">
-                                    <FaShoppingBasket size={18}/>
+                    {loading ? (
+                        <div className={styles.rightLoading} aria-hidden="true">
+                            {[0, 1, 2].map((idx) => (
+                                <span className={`${styles.iconBtn} ${styles.iconBtnSkeleton}`} key={`hdr-sk-${idx}`}>
+                                    <span className={styles.iconCircleSkeleton}/>
+                                    <span className={styles.iconLabelSkeleton}/>
                                 </span>
-                                {cartCount > 0 && <span className={styles.badge}>{cartCount}</span>}
-                                <span className={styles.iconLabel}>Корзина</span>
-                            </Link>
-
-                            <Link to="/favorites" className={styles.iconBtn}>
-                                <span className={styles.iconCircle} aria-hidden="true">
-                                    <FaHeart size={18}/>
-                                </span>
-                                {favoriteCount > 0 && <span className={styles.badge}>{favoriteCount}</span>}
-                                <span className={styles.iconLabel}>Избранное</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {isAuthenticated ? (
+                            ))}
+                        </div>
+                    ) : (
                         <>
                             {!isStaff && (
-                                <Link to="/profile" className={styles.iconBtn}>
-                                    <span className={styles.iconCircle} aria-hidden="true">
-                                        <FaUser size={18}/>
-                                    </span>
-                                    <span className={styles.iconLabel}>Профиль</span>
-                                </Link>
-                            )}
-                            {isStaff && (
                                 <>
-                                    {isAdmin && (
-                                        <Link to="/admin" className={styles.iconBtn}>
-                                            <span className={styles.iconCircle} aria-hidden="true">
-                                                <FaTags size={18}/>
-                                            </span>
-                                            <span className={styles.iconLabel}>Товары</span>
-                                        </Link>
-                                    )}
-                                    <Link to="/staff/orders" className={styles.iconBtn}>
+                                    <Link to="/cart" className={styles.iconBtn}>
                                         <span className={styles.iconCircle} aria-hidden="true">
-                                            <FaBoxOpen size={18}/>
+                                            <FaShoppingBasket size={18}/>
                                         </span>
-                                        <span className={styles.iconLabel}>Сборка</span>
+                                        {cartCount > 0 && <span className={styles.badge}>{cartCount}</span>}
+                                        <span className={styles.iconLabel}>Корзина</span>
                                     </Link>
-                                    <Link to="/staff/analytics" className={styles.iconBtn}>
+
+                                    <Link to="/favorites" className={styles.iconBtn}>
                                         <span className={styles.iconCircle} aria-hidden="true">
-                                            <FaChartBar size={18}/>
+                                            <FaHeart size={18}/>
                                         </span>
-                                        <span className={styles.iconLabel}>Аналитика</span>
+                                        {favoriteCount > 0 && <span className={styles.badge}>{favoriteCount}</span>}
+                                        <span className={styles.iconLabel}>Избранное</span>
                                     </Link>
                                 </>
                             )}
-                            <button
-                                className={`${styles.iconBtn} ${styles.iconBtnButton}`}
-                                onClick={handleLogout}
-                                type="button"
-                            >
-                                <span className={styles.iconCircle} aria-hidden="true">
-                                    <FaSignOutAlt size={18}/>
-                                </span>
-                                <span className={styles.iconLabel}>Выйти</span>
-                            </button>
+
+                            {isAuthenticated ? (
+                                <>
+                                    {!isStaff && (
+                                        <Link to="/profile" className={styles.iconBtn}>
+                                            <span className={styles.iconCircle} aria-hidden="true">
+                                                <FaUser size={18}/>
+                                            </span>
+                                            <span className={styles.iconLabel}>Профиль</span>
+                                        </Link>
+                                    )}
+                                    {isStaff && (
+                                        <>
+                                            {isAdmin && (
+                                                <Link to="/admin" className={styles.iconBtn}>
+                                                    <span className={styles.iconCircle} aria-hidden="true">
+                                                        <FaTags size={18}/>
+                                                    </span>
+                                                    <span className={styles.iconLabel}>Товары</span>
+                                                </Link>
+                                            )}
+                                            <Link to="/staff/orders" className={styles.iconBtn}>
+                                                <span className={styles.iconCircle} aria-hidden="true">
+                                                    <FaBoxOpen size={18}/>
+                                                </span>
+                                                <span className={styles.iconLabel}>Сборка</span>
+                                            </Link>
+                                            <Link to="/staff/analytics" className={styles.iconBtn}>
+                                                <span className={styles.iconCircle} aria-hidden="true">
+                                                    <FaChartBar size={18}/>
+                                                </span>
+                                                <span className={styles.iconLabel}>Аналитика</span>
+                                            </Link>
+                                        </>
+                                    )}
+                                    <button
+                                        className={`${styles.iconBtn} ${styles.iconBtnButton}`}
+                                        onClick={handleLogout}
+                                        type="button"
+                                    >
+                                        <span className={styles.iconCircle} aria-hidden="true">
+                                            <FaSignOutAlt size={18}/>
+                                        </span>
+                                        <span className={styles.iconLabel}>Выйти</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <Link to="/login" className={styles.iconBtn}>
+                                    <span className={styles.iconCircle} aria-hidden="true">
+                                        <FaUser size={18}/>
+                                    </span>
+                                    <span className={styles.iconLabel}>Войти</span>
+                                </Link>
+                            )}
                         </>
-                    ) : (
-                        <Link to="/login" className={styles.iconBtn}>
-                            <span className={styles.iconCircle} aria-hidden="true">
-                                <FaUser size={18}/>
-                            </span>
-                            <span className={styles.iconLabel}>Войти</span>
-                        </Link>
                     )}
                 </div>
             </div>
