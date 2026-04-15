@@ -119,3 +119,60 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save(update_fields=['password'])
         return user
+
+
+class RegistrationRequestCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        email = (attrs.get('email') or '').strip().lower()
+        password = attrs.get('password') or ''
+        password_confirm = attrs.get('password_confirm') or ''
+
+        if password != password_confirm:
+            raise serializers.ValidationError({'password_confirm': ['Пароли не совпадают']})
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError({'email': ['Этот email уже занят']})
+
+        candidate_user = User(username=email, email=email)
+        try:
+            validate_password(password, user=candidate_user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': [first_password_error(e.messages)]})
+
+        attrs['email'] = email
+        return attrs
+
+
+class RegistrationConfirmCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+
+    def validate_email(self, value):
+        return (value or '').strip().lower()
+
+    def validate_code(self, value):
+        code = ''.join(ch for ch in str(value or '') if ch.isdigit())
+        if len(code) != 6:
+            raise serializers.ValidationError('Введите 6-значный код')
+        return code
+
+
+class EmailChangeRequestSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+
+    def validate_new_email(self, value):
+        return (value or '').strip().lower()
+
+
+class EmailChangeConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField(min_length=6, max_length=6)
+
+    def validate_code(self, value):
+        code = ''.join(ch for ch in str(value or '') if ch.isdigit())
+        if len(code) != 6:
+            raise serializers.ValidationError('Введите 6-значный код')
+        return code

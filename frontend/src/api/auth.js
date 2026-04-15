@@ -4,6 +4,10 @@ export function registerUser(payload) {
     return apiPost('/api/users/register/', payload);
 }
 
+export function confirmRegisterUser(payload) {
+    return apiPost('/api/users/register/confirm/', payload);
+}
+
 export function loginUser(payload) {
     return apiPost('/api/users/login/', payload);
 }

@@ -1,5 +1,11 @@
 import {createContext, useContext, useEffect, useMemo, useState} from 'react';
-import {loginUser, logoutUser, refreshAccessToken, registerUser} from '../api/auth';
+import {
+    confirmRegisterUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    registerUser,
+} from '../api/auth';
 import {useNotify} from './notifyContext';
 
 const AuthContext = createContext(null);
@@ -64,6 +70,19 @@ function normalizeAuthErrorMessage(rawMessage, mode = 'login') {
 
     if (lower.includes('email') && lower.includes('invalid')) {
         return 'Введите корректный email';
+    }
+
+    if (lower.includes('код') && lower.includes('истек')) {
+        return 'Код истек. Запросите новый';
+    }
+    if (lower.includes('неверный код')) {
+        return message || 'Неверный код подтверждения';
+    }
+    if (lower.includes('запросите код')) {
+        return 'Сначала запросите код подтверждения';
+    }
+    if (lower.includes('повторную отправку можно запросить')) {
+        return message;
     }
 
     if (mode === 'login') return message || 'Ошибка входа';
@@ -199,21 +218,32 @@ export function AuthProvider({children}) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const register = async ({username, email, password}) => {
+    const reloadUser = async () => {
+        if (!accessToken) return null;
+        const me = await fetchMe(accessToken);
+        setUser(me);
+        return me;
+    };
+
+    const finalizeAuth = async (authPayload, successMessage) => {
+        setAccessToken(authPayload.access);
+        const token = authPayload.access;
+        const [me, perms] = await Promise.all([
+            fetchMe(token),
+            fetchPermissions(token),
+        ]);
+        setUser(me);
+        setPermissions(perms);
+        if (successMessage) {
+            notify.success(successMessage);
+        }
+        return authPayload;
+    };
+
+    const requestRegisterCode = async ({email, password, password_confirm}) => {
         try {
-            const r = await registerUser({username, email, password});
-            setAccessToken(r.access);
-
-            const token = r.access;
-            const [me, perms] = await Promise.all([
-                fetchMe(token),
-                fetchPermissions(token),
-            ]);
-
-            setUser(me);
-            setPermissions(perms);
-            notify.success('Регистрация выполнена');
-
+            const r = await registerUser({email, password, password_confirm});
+            notify.success('Код подтверждения отправлен на email');
             return r;
         } catch (e) {
             const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'register');
@@ -222,22 +252,25 @@ export function AuthProvider({children}) {
         }
     };
 
+    const confirmRegisterCode = async ({email, code}) => {
+        try {
+            const r = await confirmRegisterUser({email, code});
+            return await finalizeAuth(r, 'Email подтверждён. Регистрация завершена');
+        } catch (e) {
+            const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'register');
+            notify.error(friendlyMessage);
+            throw new Error(friendlyMessage);
+        }
+    };
+
+    const register = async ({email, password, password_confirm}) => {
+        return requestRegisterCode({email, password, password_confirm});
+    };
+
     const login = async ({username, password}) => {
         try {
             const r = await loginUser({username, password});
-            setAccessToken(r.access);
-
-            const token = r.access;
-            const [me, perms] = await Promise.all([
-                fetchMe(token),
-                fetchPermissions(token),
-            ]);
-
-            setUser(me);
-            setPermissions(perms);
-            notify.success('Вы вошли в аккаунт');
-
-            return r;
+            return await finalizeAuth(r, 'Вы вошли в аккаунт');
         } catch (e) {
             const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'login');
             notify.error(friendlyMessage);
@@ -259,10 +292,13 @@ export function AuthProvider({children}) {
         isAuthenticated,
         loading,
         register,
+        requestRegisterCode,
+        confirmRegisterCode,
         login,
         logout,
         authFetch,
         ensureFreshAccess,
+        reloadUser,
          // eslint-disable-next-line
     }), [accessToken, user, permissions, isAuthenticated, loading]);
 

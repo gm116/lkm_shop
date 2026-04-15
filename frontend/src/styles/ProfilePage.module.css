@@ -5,9 +5,9 @@
 
 .page {
     width: 100%;
-    max-width: none;
-    margin: 0;
-    padding: 22px 24px 44px;
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 18px 20px 40px;
 }
 
 .header {
@@ -23,17 +23,17 @@
 }
 
 .title {
-    font-size: 26px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 700;
     margin: 0;
     letter-spacing: -0.02em;
 }
 
 .sub {
     margin-top: 6px;
-    font-size: 13px;
+    font-size: 12px;
     color: #6b7280;
-    font-weight: 650;
+    font-weight: 500;
 }
 
 .headerRight {
@@ -88,7 +88,7 @@
 
 .layout {
     display: grid;
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: minmax(420px, 500px) minmax(0, 1fr);
     gap: 14px;
     align-items: start;
 }
@@ -97,15 +97,16 @@
 .rightCol {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
 }
 
 .card {
     background: #fff;
     border: 1px solid #e6e8ef;
-    border-radius: 18px;
-    padding: 16px;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 1px 0 rgba(17, 24, 39, 0.02);
 }
 
 .stickyCard {
@@ -118,19 +119,31 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .cardTitle {
-    font-size: 16px;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 650;
 }
 
 .cardHint {
-    font-size: 13px;
+    font-size: 11px;
     color: #6b7280;
-    font-weight: 650;
-    margin-top: 4px;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.compactCard .cardHead {
+    margin-bottom: 8px;
+}
+
+.compactCard .btnLight,
+.compactCard .btnDark,
+.compactCard .btnDangerLight {
+    height: 34px;
+    font-size: 13px;
+    padding: 0 10px;
 }
 
 .cardActions {
@@ -166,9 +179,10 @@
     border: 1px solid #e6e8ef;
     background: #fff;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 14px;
     color: #111827;
+    white-space: nowrap;
 }
 
 .btnLight:hover {
@@ -183,8 +197,9 @@
     background: #111827;
     color: #fff;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 14px;
+    white-space: nowrap;
 }
 
 .btnDark:hover {
@@ -199,7 +214,7 @@
     background: #fff;
     color: #991b1b;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 14px;
 }
 
@@ -214,11 +229,194 @@
     cursor: not-allowed;
 }
 
+/* Address modal */
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(17, 24, 39, 0.42);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modalCard {
+    width: min(740px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+    border-radius: 16px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    box-shadow: 0 28px 80px rgba(17, 24, 39, 0.25);
+}
+
+.modalHead {
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef0f4;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.modalTitle {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 650;
+    color: #111827;
+}
+
+.modalHint {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.modalClose {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modalClose:hover {
+    background: #f5f7fb;
+    color: #111827;
+}
+
+.modalBody {
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}
+
 /* Profile form */
 .form {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.profileForm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.profileViewGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.profileViewCell {
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 8px 10px;
+    background: #fafbfe;
+}
+
+.profileViewLabel {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.profileViewValue {
+    margin-top: 2px;
+    font-size: 13px;
+    color: #111827;
+    font-weight: 600;
+    min-height: 18px;
+}
+
+.readonlyValue {
+    min-height: 44px;
+    border: 1px solid #e6e8ef;
+    border-radius: 12px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.emailPanel {
+    border: 1px solid #e6e8ef;
+    border-radius: 14px;
+    padding: 12px;
+    background: #fbfcff;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.emailPanelHead {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.emailPanelTitle {
+    font-size: 14px;
+    font-weight: 650;
+    color: #111827;
+}
+
+.emailPanelHint {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.emailSendRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.emailConfirmSlot {
+    min-height: 98px;
+}
+
+.emailConfirmBox {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.emailHint {
+    min-height: 44px;
+    border: 1px dashed #d5dae5;
+    border-radius: 12px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+    background: #fff;
 }
 
 .row {
@@ -230,7 +428,7 @@
 
 .label {
     color: #6b7280;
-    font-weight: 650;
+    font-weight: 500;
     font-size: 14px;
 }
 
@@ -239,7 +437,7 @@
 }
 
 .value {
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
     color: #111827;
     white-space: nowrap;
@@ -308,7 +506,7 @@
 .fieldLabel {
     font-size: 13px;
     color: #6b7280;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .reqStar {
@@ -326,21 +524,21 @@
 }
 
 .reqText {
-    font-weight: 650;
+    font-weight: 500;
 }
 
 /* Addresses list */
 .addressList {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
 }
 
 .addressCard {
     border: 1px solid #eef0f4;
-    border-radius: 18px;
-    padding: 14px;
+    border-radius: 14px;
+    padding: 10px;
     background: #fff;
 }
 
@@ -349,16 +547,16 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 .addressTitle {
-    font-weight: 750;
+    font-weight: 650;
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-    font-size: 15px;
+    font-size: 14px;
     min-width: 0;
 }
 
@@ -393,10 +591,10 @@
 .addressBody {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
+    gap: 4px;
+    font-size: 13px;
     color: #111827;
-    line-height: 1.35;
+    line-height: 1.4;
     min-width: 0;
 }
 
@@ -409,16 +607,16 @@
 .metaRow {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     color: #374151;
-    font-weight: 650;
-    font-size: 13px;
+    font-weight: 500;
+    font-size: 12px;
 }
 
 .comment {
-    font-size: 13px;
+    font-size: 12px;
     color: #6b7280;
-    font-weight: 650;
+    font-weight: 500;
 }
 
 /* Orders */
@@ -438,11 +636,11 @@
 }
 
 .orderId {
-    font-weight: 650;
+    font-weight: 600;
 }
 
 .orderStatus {
-    font-weight: 850;
+    font-weight: 650;
     color: #111827;
 }
 
@@ -464,13 +662,13 @@
 .k {
     font-size: 12px;
     color: #6b7280;
-    font-weight: 800;
+    font-weight: 600;
 }
 
 .v {
     margin-top: 4px;
     font-size: 14px;
-    font-weight: 850;
+    font-weight: 650;
     color: #111827;
     min-width: 0;
 }
@@ -480,7 +678,7 @@
     margin-top: 2px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 750;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -489,7 +687,7 @@
 .vStrong {
     margin-top: 4px;
     font-size: 14px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -543,6 +741,18 @@
         grid-template-columns: 1fr;
     }
 
+    .profileViewGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .emailSendRow {
+        grid-template-columns: 1fr;
+    }
+
+    .emailConfirmSlot {
+        min-height: 0;
+    }
+
     .addressTitleText {
         max-width: 100%;
     }
@@ -555,6 +765,24 @@
 @media (max-width: 560px) {
     .page {
         padding: 18px 12px 36px;
+    }
+
+    .modalBackdrop {
+        padding: 10px;
+    }
+
+    .modalCard {
+        max-height: calc(100vh - 20px);
+    }
+
+    .modalHead,
+    .modalBody {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .modalActions {
+        flex-direction: column-reverse;
     }
 
     .header {
@@ -937,5 +1165,306 @@
 
     .itemsHint {
         white-space: normal;
+    }
+}
+
+/* Orders v2 */
+.orderCard {
+    border-radius: 14px;
+}
+
+.orderSummary {
+    padding: 12px;
+    gap: 12px;
+    transition: background 0.15s ease;
+}
+
+.orderSummary:hover {
+    background: #fafbfd;
+}
+
+.orderSummaryLeft {
+    min-width: 0;
+}
+
+.orderSummaryTop {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.orderNumber {
+    font-size: 15px;
+    font-weight: 650;
+    color: #111827;
+}
+
+.orderDate {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.orderBadges {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.orderBadge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.badgeNeutral {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+
+.paymentOk {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+.paymentWait {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+}
+
+.orderSummaryRight {
+    text-align: right;
+    min-width: 0;
+}
+
+.orderTotal {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.orderMetaMini {
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.orderBody {
+    padding: 12px;
+}
+
+.orderInfoGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.orderInfoCard {
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fafbfd;
+}
+
+.orderInfoTitle {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.orderInfoValue {
+    margin-top: 4px;
+    font-size: 14px;
+    color: #111827;
+    font-weight: 650;
+}
+
+.orderInfoSub {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.orderInfoMuted {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.itemsBlock {
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 10px;
+    background: #fff;
+}
+
+.itemsHeadNew {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.itemsTitleNew {
+    font-size: 14px;
+    font-weight: 650;
+    color: #111827;
+}
+
+.itemsActionLink {
+    color: #2c69b0;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.itemsActionLink:hover {
+    text-decoration: underline;
+}
+
+.itemsListNew {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.orderItemCardNew {
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    background: #fafbfd;
+}
+
+.orderItemMedia {
+    width: 54px;
+    height: 72px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.orderItemImageLink {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.orderItemImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.orderItemImagePlaceholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.orderItemMain {
+    min-width: 0;
+}
+
+.orderItemNameLink {
+    color: #111827;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.orderItemNameLink:hover {
+    color: #2c69b0;
+}
+
+.orderItemNameText {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.orderItemNums {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 6px;
+    justify-content: end;
+    align-items: center;
+}
+
+.orderItemNum,
+.orderItemNumStrong {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.orderItemNumStrong {
+    color: #111827;
+    font-weight: 700;
+}
+
+@media (max-width: 980px) {
+    .orderSummaryRight {
+        text-align: left;
+    }
+
+    .orderMetaMini {
+        white-space: normal;
+    }
+
+    .orderInfoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .orderItemCardNew {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .orderItemMedia {
+        width: 42px;
+        height: 56px;
+    }
+
+    .orderItemNums {
+        grid-column: 1 / -1;
+        justify-content: start;
     }
 }

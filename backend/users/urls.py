@@ -1,11 +1,16 @@
 from django.urls import path
-from .views import RegisterView, LoginView, RefreshView, LogoutView, MeView, MePermissionsView, PasswordResetRequestView, PasswordResetConfirmView, PasswordResetValidateView
+from .views import LoginView, RefreshView, LogoutView, MeView, MePermissionsView, PasswordResetRequestView, PasswordResetConfirmView, PasswordResetValidateView
+from .registration_api import RegistrationRequestCodeView, RegistrationConfirmCodeView
+from .email_change_api import EmailChangeRequestView, EmailChangeConfirmView
 from .address_api import AddressListCreateView, AddressDetailView, AddressSetDefaultView
 from .me_api import MePrefillView
 from .feedback_api import FeedbackSendView
 
 urlpatterns = [
-    path('register/', RegisterView.as_view()),
+    path('register/', RegistrationRequestCodeView.as_view()),
+    path('register/confirm/', RegistrationConfirmCodeView.as_view()),
+    path('email-change/request/', EmailChangeRequestView.as_view()),
+    path('email-change/confirm/', EmailChangeConfirmView.as_view()),
     path('login/', LoginView.as_view()),
     path('password-reset/request/', PasswordResetRequestView.as_view()),
     path('password-reset/validate/', PasswordResetValidateView.as_view()),

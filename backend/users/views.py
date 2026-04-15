@@ -13,10 +13,9 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 
-from .serializers import RegisterSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -32,39 +31,24 @@ def set_refresh_cookie(response, token):
     )
 
 
-class RegisterView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-
-        refresh = RefreshToken.for_user(user)
-
-        response = Response({
-            'access': str(refresh.access_token),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-            }
-        }, status=status.HTTP_201_CREATED)
-
-        set_refresh_cookie(response, refresh)
-        return response
-
-
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get('username', '')
-        password = request.data.get('password', '')
+        identifier = (request.data.get('username') or request.data.get('email') or '').strip()
+        password = request.data.get('password') or ''
 
-        user = User.objects.filter(username=username).first()
+        if not identifier or not password:
+            return Response({'detail': 'Введите email или логин и пароль'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email__iexact=identifier).first()
+        if not user:
+            user = User.objects.filter(username__iexact=identifier).first()
+
         if not user or not user.check_password(password):
             return Response({'detail': 'Неверный логин или пароль'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_active:
+            return Response({'detail': 'Аккаунт деактивирован'}, status=status.HTTP_403_FORBIDDEN)
 
         user.last_login = timezone.now()
         user.save(update_fields=['last_login'])
@@ -224,20 +208,19 @@ class MeView(APIView):
         first_name = (request.data.get('first_name') or '').strip()
         last_name = (request.data.get('last_name') or '').strip()
 
-        if email:
+        if email and email.lower() != (u.email or '').strip().lower():
             try:
                 validate_email(email)
             except DjangoValidationError:
                 return Response({'detail': 'Введите корректный email'}, status=status.HTTP_400_BAD_REQUEST)
-
-            if User.objects.filter(email__iexact=email).exclude(id=u.id).exists():
-                return Response({'detail': 'Этот email уже занят'}, status=status.HTTP_400_BAD_REQUEST)
-
-            u.email = email
+            return Response(
+                {'detail': 'Смена email выполняется через подтверждение кода'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         u.first_name = first_name
         u.last_name = last_name
-        u.save(update_fields=['email', 'first_name', 'last_name'])
+        u.save(update_fields=['first_name', 'last_name'])
 
         return Response({
             'username': u.username,

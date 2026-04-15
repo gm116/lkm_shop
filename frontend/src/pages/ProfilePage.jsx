@@ -34,8 +34,44 @@ function isBlank(v) {
     return !String(v || '').trim();
 }
 
+function normalizePhone(value) {
+    const input = String(value || '');
+    const trimmed = input.trim();
+    const startsWithPlus = trimmed.startsWith('+');
+    const hasUserPlusSeven = /^\+?\s*7/.test(trimmed);
+
+    const digits = input.replace(/\D/g, '');
+    let local = digits;
+    if (local.startsWith('7') || local.startsWith('8')) {
+        local = local.slice(1);
+    }
+    local = local.slice(0, 10);
+
+    if (!trimmed) return '';
+    if (!local && (hasUserPlusSeven || startsWithPlus)) return '+7';
+    if (!local) return '';
+
+    let out = '+7';
+    if (local.length > 0) {
+        out += ` (${local.slice(0, Math.min(3, local.length))}`;
+    }
+    if (local.length > 3) {
+        out += ')';
+        out += ` ${local.slice(3, Math.min(6, local.length))}`;
+    }
+    if (local.length > 6) out += `-${local.slice(6, Math.min(8, local.length))}`;
+    if (local.length > 8) out += `-${local.slice(8, 10)}`;
+    return out;
+}
+
+function phoneIsValid(value) {
+    const text = String(value || '').trim();
+    const digits = text.replace(/\D/g, '');
+    return digits.length === 11 && digits.startsWith('7');
+}
+
 export default function ProfilePage() {
-    const {accessToken, user, logout, authFetch} = useAuth();
+    const {accessToken, user, logout, authFetch, reloadUser} = useAuth();
     const notify = useNotify();
 
     const [meLoading, setMeLoading] = useState(true);
@@ -48,6 +84,13 @@ export default function ProfilePage() {
         last_name: '',
         email: '',
     });
+    const [emailDraft, setEmailDraft] = useState('');
+    const [emailCode, setEmailCode] = useState('');
+    const [emailCodeRequested, setEmailCodeRequested] = useState(false);
+    const [emailFlowLoading, setEmailFlowLoading] = useState(false);
+    const [emailCodeSubmitted, setEmailCodeSubmitted] = useState(false);
+    const [emailResendAt, setEmailResendAt] = useState(0);
+    const [emailNowTs, setEmailNowTs] = useState(Date.now());
 
     const [addrLoading, setAddrLoading] = useState(true);
     const [addrError, setAddrError] = useState('');
@@ -55,6 +98,7 @@ export default function ProfilePage() {
     const [addresses, setAddresses] = useState([]);
 
     const [addrEditId, setAddrEditId] = useState(null);
+    const [addrModalOpen, setAddrModalOpen] = useState(false);
     const [addrForm, setAddrForm] = useState({
         label: '',
         city: '',
@@ -100,6 +144,11 @@ export default function ProfilePage() {
                 last_name: data.last_name || '',
                 email: data.email || '',
             });
+            setEmailDraft(data.email || '');
+            setEmailCode('');
+            setEmailCodeRequested(false);
+            setEmailCodeSubmitted(false);
+            setEmailResendAt(0);
         } catch (e) {
             setMeError(e?.message || 'Ошибка');
         } finally {
@@ -118,7 +167,6 @@ export default function ProfilePage() {
                 body: JSON.stringify({
                     first_name: form.first_name,
                     last_name: form.last_name,
-                    email: form.email,
                 }),
             });
 
@@ -134,9 +182,109 @@ export default function ProfilePage() {
 
             setMeSaved('Изменения сохранены');
             setEditMode(false);
+            await reloadUser().catch(() => null);
             await loadMe();
         } catch (e) {
             setMeError(e?.message || 'Ошибка');
+        }
+    };
+
+    const sendEmailChangeCode = async () => {
+        setMeError('');
+        setMeSaved('');
+
+        const nextEmail = String(emailDraft || '').trim();
+        if (!nextEmail) {
+            setMeError('Введите новый email');
+            return;
+        }
+        if (nextEmail.toLowerCase() === String(form.email || '').trim().toLowerCase()) {
+            setMeError('Укажите другой email');
+            return;
+        }
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(nextEmail)) {
+            setMeError('Введите корректный email');
+            return;
+        }
+
+        setEmailFlowLoading(true);
+        try {
+            const res = await authFetch('/api/users/email-change/request/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({new_email: nextEmail}),
+            });
+
+            if (res.status === 401) {
+                await logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.detail || 'Не удалось отправить код');
+            }
+
+            const data = await res.json();
+            const retryAfter = Number(data?.retry_after || 60);
+            setEmailNowTs(Date.now());
+            setEmailResendAt(Date.now() + retryAfter * 1000);
+            setEmailCodeRequested(true);
+            setEmailCode('');
+            setEmailCodeSubmitted(false);
+            setMeSaved('Код подтверждения отправлен на новый email');
+        } catch (e) {
+            setMeError(e?.message || 'Ошибка');
+        } finally {
+            setEmailFlowLoading(false);
+        }
+    };
+
+    const confirmEmailChange = async () => {
+        setEmailCodeSubmitted(true);
+        setMeError('');
+        setMeSaved('');
+
+        const code = String(emailCode || '').replace(/\D+/g, '');
+        if (code.length !== 6) {
+            setMeError('Введите 6-значный код');
+            return;
+        }
+
+        setEmailFlowLoading(true);
+        try {
+            const res = await authFetch('/api/users/email-change/confirm/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code}),
+            });
+
+            if (res.status === 401) {
+                await logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.detail || 'Не удалось подтвердить email');
+            }
+
+            const data = await res.json().catch(() => ({}));
+            setForm(prev => ({...prev, email: data?.email || emailDraft.trim()}));
+            setEmailDraft(data?.email || emailDraft.trim());
+            setEmailCode('');
+            setEmailCodeRequested(false);
+            setEmailCodeSubmitted(false);
+            setEmailResendAt(0);
+            setMeSaved('Email успешно обновлён');
+            setEditMode(false);
+            await reloadUser().catch(() => null);
+            await loadMe();
+        } catch (e) {
+            setMeError(e?.message || 'Ошибка');
+        } finally {
+            setEmailFlowLoading(false);
         }
     };
 
@@ -185,10 +333,23 @@ export default function ProfilePage() {
         });
     };
 
+    const openCreateAddress = () => {
+        resetAddrForm();
+        setAddrSaved('');
+        setAddrError('');
+        setAddrModalOpen(true);
+    };
+
+    const closeAddressModal = () => {
+        setAddrModalOpen(false);
+        resetAddrForm();
+    };
+
     const startEditAddress = (a) => {
         setAddrSaved('');
         setAddrError('');
         setAddrEditId(a.id);
+        setAddrModalOpen(true);
         setAddrTouched(false);
         setAddrInvalid({
             label: false,
@@ -202,17 +363,18 @@ export default function ProfilePage() {
             city: a.city || '',
             address_line: a.address_line || '',
             recipient_name: a.recipient_name || '',
-            phone: a.phone || '',
+            phone: normalizePhone(a.phone || ''),
             comment: a.comment || '',
             is_default: !!a.is_default,
         });
     };
 
     const validateAddr = () => {
+        const normalizedPhone = normalizePhone(addrForm.phone);
         const next = {
             label: isBlank(addrForm.label),
             city: isBlank(addrForm.city),
-            phone: isBlank(addrForm.phone),
+            phone: isBlank(normalizedPhone) || !phoneIsValid(normalizedPhone),
             address_line: isBlank(addrForm.address_line),
         };
         setAddrInvalid(next);
@@ -221,13 +383,17 @@ export default function ProfilePage() {
 
     const onAddrChange = (patch) => {
         setAddrForm(prev => {
-            const next = {...prev, ...patch};
+            const nextPatch = {...patch};
+            if (Object.prototype.hasOwnProperty.call(nextPatch, 'phone')) {
+                nextPatch.phone = normalizePhone(nextPatch.phone);
+            }
+            const next = {...prev, ...nextPatch};
 
             if (addrTouched) {
                 setAddrInvalid({
                     label: isBlank(next.label),
                     city: isBlank(next.city),
-                    phone: isBlank(next.phone),
+                    phone: isBlank(next.phone) || !phoneIsValid(next.phone),
                     address_line: isBlank(next.address_line),
                 });
             }
@@ -242,7 +408,11 @@ export default function ProfilePage() {
         setAddrTouched(true);
 
         if (!validateAddr()) {
-            setAddrError('Заполни обязательные поля');
+            if (!isBlank(addrForm.phone) && !phoneIsValid(addrForm.phone)) {
+                setAddrError('Телефон должен быть в формате +7 (___) ___-__-__');
+            } else {
+                setAddrError('Заполни обязательные поля');
+            }
             return;
         }
 
@@ -251,7 +421,7 @@ export default function ProfilePage() {
             city: addrForm.city,
             address_line: addrForm.address_line,
             recipient_name: addrForm.recipient_name,
-            phone: addrForm.phone,
+            phone: normalizePhone(addrForm.phone),
             comment: addrForm.comment,
             is_default: !!addrForm.is_default,
         };
@@ -280,7 +450,7 @@ export default function ProfilePage() {
             }
 
             setAddrSaved(addrEditId ? 'Адрес обновлён' : 'Адрес добавлен');
-            resetAddrForm();
+            closeAddressModal();
             await loadAddresses();
         } catch (e) {
             setAddrError(e?.message || 'Ошибка');
@@ -351,8 +521,21 @@ export default function ProfilePage() {
             last_name: user?.last_name || '',
             email: user?.email || '',
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        setEmailDraft(user?.email || '');
+    }, [user]);
+
+    useEffect(() => {
+        if (!emailCodeRequested) return undefined;
+        if (emailResendAt <= Date.now()) return undefined;
+
+        const timer = setInterval(() => {
+            setEmailNowTs(Date.now());
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [emailCodeRequested, emailResendAt]);
+
+    const emailResendLeft = Math.max(0, Math.ceil((emailResendAt - emailNowTs) / 1000));
 
     useEffect(() => {
         if (meSaved) notify.success(meSaved);
@@ -374,14 +557,31 @@ export default function ProfilePage() {
         if (ordersError) notify.error(ordersError);
     }, [ordersError, notify]);
 
+    useEffect(() => {
+        if (!addrModalOpen) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                closeAddressModal();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', onKeyDown);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [addrModalOpen]);
+
     return (
         <div className={styles.page}>
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
                     <h1 className={styles.title}>Профиль</h1>
-                    <div className={styles.sub}>
-                        {user?.username ? `Логин: ${user.username}` : ''}
-                    </div>
                 </div>
 
                 <div className={styles.headerRight}>
@@ -397,12 +597,24 @@ export default function ProfilePage() {
                         <div className={styles.cardHead}>
                             <div>
                                 <div className={styles.cardTitle}>Мои данные</div>
-                                <div className={styles.cardHint}>Используются при оформлении заказа</div>
                             </div>
 
                             <div className={styles.cardActions}>
                                 {!editMode ? (
-                                    <button className={styles.btnDark} onClick={() => setEditMode(true)} type="button">
+                                    <button
+                                        className={styles.btnDark}
+                                        onClick={() => {
+                                            setMeError('');
+                                            setMeSaved('');
+                                            setEmailDraft('');
+                                            setEmailCode('');
+                                            setEmailCodeRequested(false);
+                                            setEmailCodeSubmitted(false);
+                                            setEmailResendAt(0);
+                                            setEditMode(true);
+                                        }}
+                                        type="button"
+                                    >
                                         Редактировать
                                     </button>
                                 ) : (
@@ -433,98 +645,487 @@ export default function ProfilePage() {
                         {meLoading ? (
                             <div className={styles.skeleton}>Загрузка…</div>
                         ) : (
-                            <div className={styles.form}>
-                                <div className={styles.row}>
-                                    <div className={styles.label}>Имя</div>
-                                    <div className={styles.control}>
-                                        {!editMode ? (
-                                            <div className={styles.value}>{form.first_name || '—'}</div>
-                                        ) : (
-                                            <input
-                                                className={styles.input}
-                                                value={form.first_name}
-                                                onChange={(e) => setForm(prev => ({
-                                                    ...prev,
-                                                    first_name: e.target.value
-                                                }))}
-                                                placeholder="Имя"
-                                            />
-                                        )}
+                            <div className={styles.profileForm}>
+                                {!editMode ? (
+                                    <div className={styles.profileViewGrid}>
+                                        <div className={styles.profileViewCell}>
+                                            <div className={styles.profileViewLabel}>Имя</div>
+                                            <div className={styles.profileViewValue}>{form.first_name || '—'}</div>
+                                        </div>
+                                        <div className={styles.profileViewCell}>
+                                            <div className={styles.profileViewLabel}>Фамилия</div>
+                                            <div className={styles.profileViewValue}>{form.last_name || '—'}</div>
+                                        </div>
+                                        <div className={styles.profileViewCell}>
+                                            <div className={styles.profileViewLabel}>Логин</div>
+                                            <div className={styles.profileViewValue}>{user?.username || '—'}</div>
+                                        </div>
+                                        <div className={styles.profileViewCell}>
+                                            <div className={styles.profileViewLabel}>Email</div>
+                                            <div className={styles.profileViewValue}>{form.email || '—'}</div>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        <div className={styles.row2}>
+                                            <div className={styles.fieldBlock}>
+                                                <div className={styles.fieldLabel}>Имя</div>
+                                                <input
+                                                    className={styles.input}
+                                                    value={form.first_name}
+                                                    onChange={(e) => setForm(prev => ({
+                                                        ...prev,
+                                                        first_name: e.target.value
+                                                    }))}
+                                                    placeholder="Имя"
+                                                />
+                                            </div>
+                                            <div className={styles.fieldBlock}>
+                                                <div className={styles.fieldLabel}>Фамилия</div>
+                                                <input
+                                                    className={styles.input}
+                                                    value={form.last_name}
+                                                    onChange={(e) => setForm(prev => ({
+                                                        ...prev,
+                                                        last_name: e.target.value
+                                                    }))}
+                                                    placeholder="Фамилия"
+                                                />
+                                            </div>
+                                        </div>
 
-                                <div className={styles.row}>
-                                    <div className={styles.label}>Фамилия</div>
-                                    <div className={styles.control}>
-                                        {!editMode ? (
-                                            <div className={styles.value}>{form.last_name || '—'}</div>
-                                        ) : (
-                                            <input
-                                                className={styles.input}
-                                                value={form.last_name}
-                                                onChange={(e) => setForm(prev => ({
-                                                    ...prev,
-                                                    last_name: e.target.value
-                                                }))}
-                                                placeholder="Фамилия"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
+                                        <div className={styles.fieldBlock}>
+                                            <div className={styles.fieldLabel}>Логин</div>
+                                            <div className={styles.readonlyValue}>{user?.username || '—'}</div>
+                                        </div>
 
-                                <div className={styles.row}>
-                                    <div className={styles.label}>Логин</div>
-                                    <div className={styles.control}>
-                                        <div className={styles.value}>{user?.username || '—'}</div>
-                                    </div>
-                                </div>
+                                        <div className={styles.emailPanel}>
+                                            <div className={styles.emailPanelHead}>
+                                                <div className={styles.emailPanelTitle}>Смена email</div>
+                                                <div className={styles.emailPanelHint}>
+                                                    Текущий email: {form.email || '—'}
+                                                </div>
+                                            </div>
 
-                                <div className={styles.row}>
-                                    <div className={styles.label}>Email</div>
-                                    <div className={styles.control}>
-                                        {!editMode ? (
-                                            <div className={styles.value}>{form.email || '—'}</div>
-                                        ) : (
-                                            <input
-                                                className={styles.input}
-                                                value={form.email}
-                                                onChange={(e) => setForm(prev => ({...prev, email: e.target.value}))}
-                                                placeholder="Email"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
+                                            <div className={styles.emailSendRow}>
+                                                <input
+                                                    className={styles.input}
+                                                    value={emailDraft}
+                                                    onChange={(e) => setEmailDraft(e.target.value)}
+                                                    placeholder="Новый email"
+                                                    type="email"
+                                                />
+                                                <button
+                                                    className={styles.btnLight}
+                                                    onClick={sendEmailChangeCode}
+                                                    disabled={emailFlowLoading}
+                                                    type="button"
+                                                >
+                                                    {emailFlowLoading ? 'Отправляем…' : 'Отправить код'}
+                                                </button>
+                                            </div>
+
+                                            <div className={styles.emailConfirmSlot}>
+                                                {emailCodeRequested ? (
+                                                    <div className={styles.emailConfirmBox}>
+                                                        <input
+                                                            className={`${styles.input} ${emailCodeSubmitted && String(emailCode || '').replace(/\D+/g, '').length !== 6 ? styles.inputError : ''}`}
+                                                            value={emailCode}
+                                                            onChange={(e) => setEmailCode(e.target.value.replace(/\D+/g, '').slice(0, 6))}
+                                                            placeholder="Код из письма (6 цифр)"
+                                                            inputMode="numeric"
+                                                        />
+                                                        <div className={styles.actionsRow}>
+                                                            <button
+                                                                className={styles.btnDark}
+                                                                onClick={confirmEmailChange}
+                                                                disabled={emailFlowLoading}
+                                                                type="button"
+                                                            >
+                                                                Подтвердить email
+                                                            </button>
+                                                            <button
+                                                                className={styles.btnLight}
+                                                                onClick={sendEmailChangeCode}
+                                                                disabled={emailFlowLoading || emailResendLeft > 0}
+                                                                type="button"
+                                                            >
+                                                                {emailResendLeft > 0
+                                                                    ? `Повторить через ${emailResendLeft} с`
+                                                                    : 'Отправить код снова'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={styles.emailHint}>
+                                                        После отправки кода появится поле подтверждения.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </section>
 
-                    <section className={`${styles.card} ${styles.stickyCard}`}>
+                    <section className={`${styles.card} ${styles.compactCard}`}>
                         <div className={styles.cardHead}>
                             <div>
-                                <div className={styles.cardTitle}>
-                                    {addrEditId ? `Редактирование адреса` : 'Новый адрес'}
-                                </div>
-                                <div className={styles.cardHint}>
-                                    {addrEditId ? (
-                                        <>
-                                            Сейчас редактируешь: <b>{addrForm.label || `Адрес #${addrEditId}`}</b>
-                                        </>
-                                    ) : (
-                                        <>Сохрани адрес — быстрее оформление</>
-                                    )}
-                                </div>
+                                <div className={styles.cardTitle}>Адреса</div>
                             </div>
-
                             <div className={styles.cardActions}>
-                                {addrEditId ? (
-                                    <button className={styles.btnLight} onClick={resetAddrForm} type="button">
-                                        Создать новый
-                                    </button>
-                                ) : null}
+                                <button
+                                    className={styles.btnDark}
+                                    onClick={openCreateAddress}
+                                    type="button"
+                                >
+                                    Добавить адрес
+                                </button>
                             </div>
                         </div>
 
-                        <div className={styles.stack}>
+                        {addrLoading ? (
+                            <div className={styles.skeleton}>Загрузка…</div>
+                        ) : addresses.length === 0 ? (
+                            <div className={styles.empty}>Адресов пока нет</div>
+                        ) : (
+                            <div className={styles.addressList}>
+                                {addresses.map(a => (
+                                    <div className={styles.addressCard} key={a.id}>
+                                        <div className={styles.addressTop}>
+                                            <div className={styles.addressTitle}>
+                                                <span className={styles.addressTitleText}>
+                                                    {a.label ? a.label : `Адрес #${a.id}`}
+                                                </span>
+                                                {a.is_default && <span className={styles.badge}>Основной</span>}
+                                            </div>
+
+                                            <div className={styles.addressActions}>
+                                                <button
+                                                    className={styles.btnLight}
+                                                    onClick={() => startEditAddress(a)}
+                                                    type="button"
+                                                >
+                                                    Изменить
+                                                </button>
+                                                <button
+                                                    className={styles.btnDangerLight}
+                                                    onClick={() => removeAddress(a.id)}
+                                                    type="button"
+                                                >
+                                                    Удалить
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.addressBody}>
+                                            <div className={styles.addressLine}><b>{a.city || '—'}</b></div>
+                                            <div className={styles.addressLine}>{a.address_line || '—'}</div>
+
+                                            {(a.recipient_name || a.phone) && (
+                                                <div className={styles.metaRow}>
+                                                    {a.recipient_name && <span>Получатель: {a.recipient_name}</span>}
+                                                    {a.phone && <span>Телефон: {normalizePhone(a.phone) || a.phone}</span>}
+                                                </div>
+                                            )}
+
+                                            {a.comment && <div className={styles.comment}>{a.comment}</div>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                <div className={styles.rightCol}>
+                    <section className={styles.card}>
+                        <div className={styles.cardHead}>
+                            <div>
+                                <div className={styles.cardTitle}>Мои заказы</div>
+                            </div>
+                        </div>
+
+                        {ordersLoading ? (
+                            <div className={styles.skeleton}>Загрузка…</div>
+                        ) : orders.length === 0 ? (
+                            <div className={styles.empty}>Заказов пока нет</div>
+                        ) : (
+                            <div className={styles.ordersList}>
+                                {orders.map(o => {
+                                    const items = Array.isArray(o.items) ? o.items : [];
+                                    const itemsCount = items.reduce((acc, it) => acc + Number(it?.quantity || 0), 0);
+
+                                    const created = o.created_at ? new Date(o.created_at) : null;
+                                    const createdText = created
+                                        ? created.toLocaleString('ru-RU', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })
+                                        : '';
+
+                                    const statusUi = (() => {
+                                        const map = {
+                                            new: {
+                                                tone: o.payment_succeeded ? styles.stNew : styles.stProcessing,
+                                                title: o.payment_succeeded ? 'Новый' : 'Ожидает оплаты',
+                                                desc: o.payment_succeeded
+                                                    ? 'Оплата подтверждена. Заказ поступил в работу.'
+                                                    : 'Ждем оплату заказа. Если оплата не поступит за 10 минут, заказ будет отменен.'
+                                            },
+                                            paid: {
+                                                tone: styles.stPaid,
+                                                title: 'Оплачен',
+                                                desc: 'Оплата подтверждена. Заказ в очереди на сборку.'
+                                            },
+                                            shipped: {
+                                                tone: styles.stShipped,
+                                                title: 'Доставляется',
+                                                desc: 'Заказ передан в службу доставки.'
+                                            },
+                                            completed: {
+                                                tone: styles.stCompleted,
+                                                title: 'Выполнен',
+                                                desc: 'Заказ доставлен и завершён.'
+                                            },
+                                            canceled: {
+                                                tone: styles.stCanceled,
+                                                title: 'Отменён',
+                                                desc: 'Заказ отменён.'
+                                            },
+                                            processing: {
+                                                tone: styles.stProcessing,
+                                                title: 'В обработке',
+                                                desc: 'Собираем заказ на складе.'
+                                            },
+                                        };
+                                        return map[o.status] || {
+                                            tone: styles.stProcessing,
+                                            title: statusLabel(o.status, o.payment_succeeded),
+                                            desc: ''
+                                        };
+                                    })();
+
+                                    const deliveryText = deliveryLabel(o.delivery_type);
+                                    const deliveryPriceText = o.delivery_price != null ? `${formatMoney(o.delivery_price)} ₽` : '—';
+
+                                    const pickup = o.pickup_point_data;
+                                    const pickupLine = pickup?.name ? `${pickup.name}${pickup.address ? ` • ${pickup.address}` : ''}` : '';
+
+                                    const courierLine = [
+                                        o.delivery_city ? o.delivery_city : '',
+                                        o.delivery_address_text ? o.delivery_address_text : '',
+                                    ].filter(Boolean).join(', ');
+
+                                    const serviceLine = o.delivery_service ? o.delivery_service : '';
+
+                                    const productsTotal = items.reduce((sum, it) => {
+                                        const q = Number(it?.quantity || 0);
+                                        const p = Number(it?.price_snapshot ?? it?.price ?? 0);
+                                        return sum + q * p;
+                                    }, 0);
+
+                                    const itemsCountText = (() => {
+                                        const mod10 = itemsCount % 10;
+                                        const mod100 = itemsCount % 100;
+                                        if (mod10 === 1 && mod100 !== 11) return `${itemsCount} позиция`;
+                                        if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${itemsCount} позиции`;
+                                        return `${itemsCount} позиций`;
+                                    })();
+
+                                    const uniqueItemsText = (() => {
+                                        const n = items.length;
+                                        const mod10 = n % 10;
+                                        const mod100 = n % 100;
+                                        if (mod10 === 1 && mod100 !== 11) return `${n} товар`;
+                                        if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${n} товара`;
+                                        return `${n} товаров`;
+                                    })();
+
+                                    const deliveryDetail = (() => {
+                                        if (o.delivery_type === 'pvz' && pickupLine) return pickupLine;
+                                        if (o.delivery_type === 'store_pickup' && pickupLine) return pickupLine;
+                                        if (o.delivery_type === 'courier' && courierLine) return courierLine;
+                                        return 'Детали доставки появятся после обработки заказа';
+                                    })();
+
+                                    const paymentStateText = o.payment_succeeded
+                                        ? 'Оплата подтверждена'
+                                        : (o.status === 'canceled' ? 'Оплата отменена' : 'Ожидается оплата');
+
+                                    return (
+                                        <details className={styles.orderCard} key={o.id}>
+                                            <summary className={styles.orderSummary}>
+                                                <div className={styles.orderSummaryLeft}>
+                                                    <div className={styles.orderSummaryTop}>
+                                                        <div className={styles.orderNumber}>Заказ #{o.id}</div>
+                                                        {createdText ? <div className={styles.orderDate}>{createdText}</div> : null}
+                                                    </div>
+
+                                                    <div className={styles.orderBadges}>
+                                                        <span className={`${styles.orderBadge} ${statusUi.tone}`}>
+                                                            {statusUi.title}
+                                                        </span>
+                                                        <span className={`${styles.orderBadge} ${styles.badgeNeutral}`}>
+                                                            {deliveryText}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className={styles.orderSummaryRight}>
+                                                    <div className={styles.orderTotal}>{formatMoney(o.total_amount)} ₽</div>
+                                                    <div className={styles.orderMetaMini}>
+                                                        {itemsCountText}
+                                                        <span className={styles.dot}>•</span>
+                                                        Товары: {formatMoney(productsTotal)} ₽
+                                                    </div>
+                                                </div>
+                                            </summary>
+
+                                            <div className={styles.orderBody}>
+                                                <div className={styles.orderInfoGrid}>
+                                                    <div className={styles.orderInfoCard}>
+                                                        <div className={styles.orderInfoTitle}>Статус заказа</div>
+                                                        <div className={styles.orderInfoValue}>{statusUi.title}</div>
+                                                        {statusUi.desc ? (
+                                                            <div className={styles.orderInfoSub}>{statusUi.desc}</div>
+                                                        ) : null}
+                                                    </div>
+
+                                                    <div className={styles.orderInfoCard}>
+                                                        <div className={styles.orderInfoTitle}>Доставка</div>
+                                                        <div className={styles.orderInfoValue}>{deliveryText}</div>
+                                                        <div className={styles.orderInfoSub}>{deliveryDetail}</div>
+                                                        {serviceLine ? (
+                                                            <div className={styles.orderInfoMuted}>Служба: {serviceLine}</div>
+                                                        ) : null}
+                                                    </div>
+
+                                                    <div className={styles.orderInfoCard}>
+                                                        <div className={styles.orderInfoTitle}>Оплата и сумма</div>
+                                                        <div className={styles.orderInfoValue}>{formatMoney(o.total_amount)} ₽</div>
+                                                        <div className={styles.orderInfoSub}>
+                                                            Товары: {formatMoney(productsTotal)} ₽
+                                                        </div>
+                                                        <div className={styles.orderInfoMuted}>
+                                                            Доставка: {deliveryPriceText}
+                                                        </div>
+                                                        <div className={styles.orderInfoMuted}>
+                                                            {paymentStateText}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className={styles.orderInfoCard}>
+                                                        <div className={styles.orderInfoTitle}>Состав</div>
+                                                        <div className={styles.orderInfoValue}>{itemsCountText}</div>
+                                                        <div className={styles.orderInfoSub}>
+                                                            {uniqueItemsText} в заказе
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {items.length > 0 ? (
+                                                    <div className={styles.itemsBlock}>
+                                                        <div className={styles.itemsHeadNew}>
+                                                            <div className={styles.itemsTitleNew}>Состав заказа</div>
+                                                            <a className={styles.itemsActionLink} href="/catalog">
+                                                                Перейти в каталог
+                                                            </a>
+                                                        </div>
+
+                                                        <div className={styles.itemsListNew}>
+                                                            {items.map((it, idx) => {
+                                                                const name = it.product_name_snapshot || it.product_name || 'Товар';
+                                                                const qty = Number(it.quantity || 0);
+                                                                const price = Number(it.price_snapshot ?? it.price ?? 0);
+                                                                const rowSum = qty * price;
+                                                                const productUrl = it?.product_id ? `/product/${it.product_id}` : '';
+                                                                const imageUrl = String(it?.image_url_snapshot || '').trim();
+
+                                                                return (
+                                                                    <div className={styles.orderItemCardNew} key={`${o.id}-${idx}`}>
+                                                                        <div className={styles.orderItemMedia}>
+                                                                            {imageUrl ? (
+                                                                                productUrl ? (
+                                                                                    <a href={productUrl} className={styles.orderItemImageLink}>
+                                                                                        <img src={imageUrl} alt={name} className={styles.orderItemImage}/>
+                                                                                    </a>
+                                                                                ) : (
+                                                                                    <img src={imageUrl} alt={name} className={styles.orderItemImage}/>
+                                                                                )
+                                                                            ) : (
+                                                                                <div className={styles.orderItemImagePlaceholder}>Фото</div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className={styles.orderItemMain}>
+                                                                            {productUrl ? (
+                                                                                <a href={productUrl} className={styles.orderItemNameLink}>
+                                                                                    {name}
+                                                                                </a>
+                                                                            ) : (
+                                                                                <div className={styles.orderItemNameText}>{name}</div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className={styles.orderItemNums}>
+                                                                            <div className={styles.orderItemNum}>{qty} шт.</div>
+                                                                            <div className={styles.orderItemNum}>{formatMoney(price)} ₽</div>
+                                                                            <div className={styles.orderItemNumStrong}>{formatMoney(rowSum)} ₽</div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={styles.empty}>Состав заказа пуст</div>
+                                                )}
+                                            </div>
+                                        </details>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </div>
+
+            {addrModalOpen ? (
+                <div
+                    className={styles.modalBackdrop}
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) {
+                            closeAddressModal();
+                        }
+                    }}
+                >
+                    <div className={styles.modalCard} role="dialog" aria-modal="true" aria-labelledby="address-modal-title">
+                        <div className={styles.modalHead}>
+                            <div>
+                                <h2 id="address-modal-title" className={styles.modalTitle}>
+                                    {addrEditId ? 'Редактирование адреса' : 'Новый адрес'}
+                                </h2>
+                                <div className={styles.modalHint}>
+                                    Заполни обязательные поля для доставки
+                                </div>
+                            </div>
+                            <button className={styles.modalClose} onClick={closeAddressModal} type="button" aria-label="Закрыть">
+                                ×
+                            </button>
+                        </div>
+
+                        <form
+                            className={styles.modalBody}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                submitAddress();
+                            }}
+                        >
                             <div className={styles.reqRow}>
                                 <span className={styles.reqStar}>*</span>
                                 <span className={styles.reqText}>— обязательные поля</span>
@@ -580,24 +1181,25 @@ export default function ProfilePage() {
                                 />
                             </div>
 
-                            <div className={styles.fieldBlock}>
-                                <div className={styles.fieldLabel}>Получатель</div>
-                                <input
-                                    className={styles.input}
-                                    value={addrForm.recipient_name}
-                                    onChange={(e) => onAddrChange({recipient_name: e.target.value})}
-                                    placeholder="Необязательно"
-                                />
-                            </div>
-
-                            <div className={styles.fieldBlock}>
-                                <div className={styles.fieldLabel}>Комментарий</div>
-                                <input
-                                    className={styles.input}
-                                    value={addrForm.comment}
-                                    onChange={(e) => onAddrChange({comment: e.target.value})}
-                                    placeholder="Подъезд/код/этаж — необязательно"
-                                />
+                            <div className={styles.row2}>
+                                <div className={styles.fieldBlock}>
+                                    <div className={styles.fieldLabel}>Получатель</div>
+                                    <input
+                                        className={styles.input}
+                                        value={addrForm.recipient_name}
+                                        onChange={(e) => onAddrChange({recipient_name: e.target.value})}
+                                        placeholder="Необязательно"
+                                    />
+                                </div>
+                                <div className={styles.fieldBlock}>
+                                    <div className={styles.fieldLabel}>Комментарий</div>
+                                    <input
+                                        className={styles.input}
+                                        value={addrForm.comment}
+                                        onChange={(e) => onAddrChange({comment: e.target.value})}
+                                        placeholder="Подъезд/код/этаж — необязательно"
+                                    />
+                                </div>
                             </div>
 
                             <label className={styles.checkboxRow}>
@@ -606,327 +1208,21 @@ export default function ProfilePage() {
                                     checked={addrForm.is_default}
                                     onChange={(e) => onAddrChange({is_default: e.target.checked})}
                                 />
-                                Сделать основным
+                                Сделать адрес основным
                             </label>
 
-                            <div className={styles.actionsRow}>
-                                {addrEditId ? (
-                                    <button className={styles.btnLight} onClick={resetAddrForm} type="button">
-                                        Отмена
-                                    </button>
-                                ) : null}
-
-                                <button
-                                    className={styles.btnDark}
-                                    onClick={submitAddress}
-                                    disabled={addrLoading}
-                                    type="button"
-                                >
-                                    {addrEditId ? 'Сохранить' : 'Добавить'}
+                            <div className={styles.modalActions}>
+                                <button className={styles.btnLight} onClick={closeAddressModal} type="button">
+                                    Отмена
+                                </button>
+                                <button className={styles.btnDark} disabled={addrLoading} type="submit">
+                                    {addrEditId ? 'Сохранить адрес' : 'Добавить адрес'}
                                 </button>
                             </div>
-                        </div>
-                    </section>
+                        </form>
+                    </div>
                 </div>
-
-                <div className={styles.rightCol}>
-                    <section className={styles.card}>
-                        <div className={styles.cardHead}>
-                            <div>
-                                <div className={styles.cardTitle}>Адреса</div>
-                                <div className={styles.cardHint}>
-                                    Нажми “Изменить”, чтобы отредактировать адрес в левой форме
-                                </div>
-                            </div>
-                        </div>
-
-                        {addrLoading ? (
-                            <div className={styles.skeleton}>Загрузка…</div>
-                        ) : addresses.length === 0 ? (
-                            <div className={styles.empty}>Адресов пока нет</div>
-                        ) : (
-                            <div className={styles.addressList}>
-                                {addresses.map(a => (
-                                    <div className={styles.addressCard} key={a.id}>
-                                        <div className={styles.addressTop}>
-                                            <div className={styles.addressTitle}>
-                                                <span className={styles.addressTitleText}>
-                                                    {a.label ? a.label : `Адрес #${a.id}`}
-                                                </span>
-                                                {a.is_default && <span className={styles.badge}>Основной</span>}
-                                            </div>
-
-                                            <div className={styles.addressActions}>
-                                                <button
-                                                    className={styles.btnLight}
-                                                    onClick={() => startEditAddress(a)}
-                                                    type="button"
-                                                >
-                                                    Изменить
-                                                </button>
-                                                <button
-                                                    className={styles.btnDangerLight}
-                                                    onClick={() => removeAddress(a.id)}
-                                                    type="button"
-                                                >
-                                                    Удалить
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className={styles.addressBody}>
-                                            <div className={styles.addressLine}><b>{a.city || '—'}</b></div>
-                                            <div className={styles.addressLine}>{a.address_line || '—'}</div>
-
-                                            {(a.recipient_name || a.phone) && (
-                                                <div className={styles.metaRow}>
-                                                    {a.recipient_name && <span>Получатель: {a.recipient_name}</span>}
-                                                    {a.phone && <span>Телефон: {a.phone}</span>}
-                                                </div>
-                                            )}
-
-                                            {a.comment && <div className={styles.comment}>{a.comment}</div>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className={styles.card}>
-                        <div className={styles.cardHead}>
-                            <div>
-                                <div className={styles.cardTitle}>Мои заказы</div>
-                                <div className={styles.cardHint}>Статусы, доставка и состав заказа</div>
-                            </div>
-                        </div>
-
-                        {ordersLoading ? (
-                            <div className={styles.skeleton}>Загрузка…</div>
-                        ) : orders.length === 0 ? (
-                            <div className={styles.empty}>Заказов пока нет</div>
-                        ) : (
-                            <div className={styles.ordersList}>
-                                {orders.map(o => {
-                                    const items = Array.isArray(o.items) ? o.items : [];
-                                    const itemsCount = items.reduce((acc, it) => acc + Number(it?.quantity || 0), 0);
-
-                                    const created = o.created_at ? new Date(o.created_at) : null;
-                                    const createdText = created
-                                        ? created.toLocaleString('ru-RU', {
-                                            year: 'numeric',
-                                            month: '2-digit',
-                                            day: '2-digit',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })
-                                        : '';
-
-                                    const statusUi = (() => {
-                                        const map = {
-                                            new: {
-                                                tone: o.payment_succeeded ? styles.stNew : styles.stProcessing,
-                                                title: o.payment_succeeded ? 'Новый' : 'Ожидает оплаты',
-                                                desc: o.payment_succeeded
-                                                    ? 'Оплата подтверждена. Заказ поступил в работу.'
-                                                    : 'Ждем оплату заказа. Если оплата не поступит за 10 минут, заказ будет отменен.'
-                                            },
-                                            paid: {
-                                                tone: styles.stPaid,
-                                                title: 'Оплачен',
-                                                desc: 'Оплата подтверждена. Готовим к отправке.'
-                                            },
-                                            shipped: {
-                                                tone: styles.stShipped,
-                                                title: 'Доставляется',
-                                                desc: 'Заказ передан в доставку.'
-                                            },
-                                            completed: {
-                                                tone: styles.stCompleted,
-                                                title: 'Выполнен',
-                                                desc: 'Заказ доставлен и завершён.'
-                                            },
-                                            canceled: {
-                                                tone: styles.stCanceled,
-                                                title: 'Отменён',
-                                                desc: 'Заказ отменён.'
-                                            },
-                                            processing: {
-                                                tone: styles.stProcessing,
-                                                title: 'В обработке',
-                                                desc: 'Собираем заказ на складе.'
-                                            },
-                                        };
-                                        return map[o.status] || {
-                                            tone: styles.stProcessing,
-                                            title: statusLabel(o.status, o.payment_succeeded),
-                                            desc: ''
-                                        };
-                                    })();
-
-                                    const deliveryText = deliveryLabel(o.delivery_type);
-                                    const deliveryPriceText = o.delivery_price != null ? `${formatMoney(o.delivery_price)} ₽` : '—';
-
-                                    const pickup = o.pickup_point_data;
-                                    const pickupLine = pickup?.name ? `${pickup.name}${pickup.address ? ` • ${pickup.address}` : ''}` : '';
-
-                                    const courierLine = [
-                                        o.delivery_city ? o.delivery_city : '',
-                                        o.delivery_address_text ? o.delivery_address_text : '',
-                                    ].filter(Boolean).join(', ');
-
-                                    const serviceLine = o.delivery_service ? o.delivery_service : '';
-
-                                    const productsTotal = items.reduce((sum, it) => {
-                                        const q = Number(it?.quantity || 0);
-                                        const p = Number(it?.price_snapshot ?? it?.price ?? 0);
-                                        return sum + q * p;
-                                    }, 0);
-
-                                    return (
-                                        <details className={styles.orderCard} key={o.id}>
-                                            <summary className={styles.orderSummary}>
-                                                <div className={styles.sumLeft}>
-                                                    <div className={styles.sumTop}>
-                                                        <div className={styles.orderId}>Заказ #{o.id}</div>
-                                                        {createdText ? <div
-                                                            className={styles.orderDate}>{createdText}</div> : null}
-                                                    </div>
-
-                                                    <div className={styles.sumBottom}>
-                                    <span className={`${styles.statusPill} ${statusUi.tone}`}>
-                                        <span className={styles.statusTitle}>{statusUi.title}</span>
-                                    </span>
-
-                                                        <span className={styles.chip}>
-                                        {deliveryText}
-                                    </span>
-
-                                                        {itemsCount ? (
-                                                            <span className={styles.chipMuted}>
-                                            {itemsCount} шт.
-                                        </span>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-
-                                                <div className={styles.sumRight}>
-                                                    <div className={styles.sumTotal}>{formatMoney(o.total_amount)} ₽
-                                                    </div>
-                                                    <div className={styles.sumSub}>
-                                                        Товары: {formatMoney(productsTotal)} ₽
-                                                        <span className={styles.dot}>•</span>
-                                                        Доставка: {deliveryPriceText}
-                                                    </div>
-                                                </div>
-                                            </summary>
-
-                                            <div className={styles.orderBody}>
-                                                <div className={styles.orderBodyTop}>
-                                                    <div className={styles.statusBlock}>
-                                                        <div className={styles.statusHead}>
-                                                            <span className={`${styles.statusDot} ${statusUi.tone}`}/>
-                                                            <div className={styles.statusText}>
-                                                                <div
-                                                                    className={styles.statusLine1}>{statusUi.title}</div>
-                                                                {statusUi.desc ? <div
-                                                                    className={styles.statusLine2}>{statusUi.desc}</div> : null}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className={styles.deliveryBlock}>
-                                                        <div className={styles.blockTitle}>Доставка</div>
-
-                                                        <div className={styles.blockRow}>
-                                                            <div className={styles.blockKey}>Способ</div>
-                                                            <div className={styles.blockVal}>
-                                                                {deliveryText}
-                                                                {serviceLine ? <span
-                                                                    className={styles.blockValSub}>{serviceLine}</span> : null}
-                                                            </div>
-                                                        </div>
-
-                                                        {o.delivery_type === 'pvz' && pickupLine ? (
-                                                            <div className={styles.blockRow}>
-                                                                <div className={styles.blockKey}>ПВЗ</div>
-                                                                <div className={styles.blockVal}>{pickupLine}</div>
-                                                            </div>
-                                                        ) : null}
-
-                                                        {o.delivery_type === 'store_pickup' && pickupLine ? (
-                                                            <div className={styles.blockRow}>
-                                                                <div className={styles.blockKey}>Самовывоз</div>
-                                                                <div className={styles.blockVal}>{pickupLine}</div>
-                                                            </div>
-                                                        ) : null}
-
-                                                        {o.delivery_type === 'courier' && courierLine ? (
-                                                            <div className={styles.blockRow}>
-                                                                <div className={styles.blockKey}>Адрес</div>
-                                                                <div className={styles.blockVal}>{courierLine}</div>
-                                                            </div>
-                                                        ) : null}
-
-                                                        <div className={styles.blockRow}>
-                                                            <div className={styles.blockKey}>Стоимость</div>
-                                                            <div className={styles.blockVal}>{deliveryPriceText}</div>
-                                                        </div>
-
-                                                        {o.comment ? (
-                                                            <div className={styles.blockRow}>
-                                                                <div className={styles.blockKey}>Комментарий</div>
-                                                                <div className={styles.blockVal}>{o.comment}</div>
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-
-                                                {items.length > 0 ? (
-                                                    <div className={styles.itemsBlock}>
-                                                        <div className={styles.itemsHead}>
-                                                            <div className={styles.blockTitle}>Состав заказа</div>
-                                                            <div className={styles.itemsHint}>Нажми на заказ, чтобы
-                                                                свернуть/развернуть
-                                                            </div>
-                                                        </div>
-
-                                                        <div className={styles.itemsTable}>
-                                                            {items.map((it, idx) => {
-                                                                const name = it.product_name_snapshot || it.product_name || 'Товар';
-                                                                const qty = Number(it.quantity || 0);
-                                                                const price = Number(it.price_snapshot ?? it.price ?? 0);
-                                                                const rowSum = qty * price;
-
-                                                                return (
-                                                                    <div className={styles.itemRow}
-                                                                         key={`${o.id}-${idx}`}>
-                                                                        <div className={styles.itemName}>{name}</div>
-                                                                        <div className={styles.itemMeta}>
-                                                                            <span
-                                                                                className={styles.itemQty}>{qty} шт.</span>
-                                                                            <span
-                                                                                className={styles.itemPrice}>{formatMoney(price)} ₽</span>
-                                                                            <span
-                                                                                className={styles.itemSum}>{formatMoney(rowSum)} ₽</span>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className={styles.empty}>Состав заказа пуст</div>
-                                                )}
-                                            </div>
-                                        </details>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </section>
-                </div>
-            </div>
+            ) : null}
         </div>
     );
 }

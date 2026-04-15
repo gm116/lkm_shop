@@ -7,7 +7,7 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const {login} = useAuth();
 
-    const [username, setUsername] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -15,15 +15,15 @@ export default function LoginPage() {
     const errors = useMemo(() => {
         const next = {};
 
-        if (!username.trim()) {
-            next.username = 'Введите логин или email';
+        if (!identifier.trim()) {
+            next.identifier = 'Введите email или логин';
         }
         if (!password) {
             next.password = 'Введите пароль';
         }
 
         return next;
-    }, [username, password]);
+    }, [identifier, password]);
 
     const onSubmit = async (e) => {
         e.preventDefault();
@@ -35,7 +35,7 @@ export default function LoginPage() {
 
         setLoading(true);
         try {
-            await login({username: username.trim(), password});
+            await login({username: identifier.trim(), password});
             navigate('/profile');
         } catch (err) {
             // Уведомление уже показывает authContext
@@ -62,24 +62,24 @@ export default function LoginPage() {
                 <section className={styles.panel}>
                     <div className={styles.head}>
                         <h1 className={styles.title}>Вход</h1>
-                        <p className={styles.subtitle}>Введите данные аккаунта</p>
+                        <p className={styles.subtitle}>Основной вход по email, также можно войти по логину</p>
                     </div>
 
                     <form className={styles.form} onSubmit={onSubmit} noValidate>
                         <label className={styles.field}>
                             <span className={styles.label}>
-                                Логин или email
+                                Email или логин
                                 <span className={styles.labelRequired}>*</span>
                             </span>
                             <input
-                                className={`${styles.input} ${submitted && errors.username ? styles.inputInvalid : ''}`}
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Введите логин или email"
+                                className={`${styles.input} ${submitted && errors.identifier ? styles.inputInvalid : ''}`}
+                                value={identifier}
+                                onChange={(e) => setIdentifier(e.target.value)}
+                                placeholder="example@mail.ru или логин"
                                 autoComplete="username"
                             />
                             <span className={styles.fieldError}>
-                                {submitted ? errors.username || '' : ''}
+                                {submitted ? errors.identifier || '' : ''}
                             </span>
                         </label>
 
