@@ -12,10 +12,11 @@ from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncMont
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
-from .models import Order, OrderItem
+from .models import Order, OrderItem, OrderStatus
 from .permissions import IsStaffOrWarehouseGroup
 from .staff_serializers import StaffOrderStatusUpdateSerializer
 from .serializers import serialize_order
+from .services import cancel_order, OrderCancellationError
 from payments.models import Payment
 
 
@@ -785,9 +786,15 @@ class StaffOrderStatusUpdateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data['status']
-        order.status = new_status
-        order.save(update_fields=['status', 'updated_at'])
-        order.refresh_from_db()
+        if new_status == OrderStatus.CANCELED:
+            try:
+                order = cancel_order(order)
+            except OrderCancellationError as exc:
+                return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            order.status = new_status
+            order.save(update_fields=['status', 'updated_at'])
+            order.refresh_from_db()
 
         return Response(serialize_order(order, include_customer=True), status=status.HTTP_200_OK)
 

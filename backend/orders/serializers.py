@@ -2,6 +2,13 @@ from rest_framework import serializers
 from payments.models import Payment
 from .models import DeliveryType, Order
 
+PVZ_SERVICE_CHOICES = (
+    'ozon',
+    'kit',
+    'delovie_linii',
+    'cdek',
+)
+
 
 class PickupPointSerializer(serializers.Serializer):
     id = serializers.CharField(required=False, allow_blank=True)
@@ -29,14 +36,22 @@ class OrderCreateFromCartSerializer(serializers.Serializer):
         delivery_type = attrs.get('delivery_type')
 
         if delivery_type == DeliveryType.COURIER:
-            if not attrs.get('delivery_city'):
-                raise serializers.ValidationError({'delivery_city': 'Required for courier'})
-            if not attrs.get('delivery_address_text'):
-                raise serializers.ValidationError({'delivery_address_text': 'Required for courier'})
+            raise serializers.ValidationError({'delivery_type': 'Доставка курьером недоступна'})
 
         if delivery_type == DeliveryType.STORE_PICKUP:
             if not attrs.get('pickup_point_data'):
-                raise serializers.ValidationError({'pickup_point_data': 'Required for pickup'})
+                raise serializers.ValidationError({'pickup_point_data': 'Для самовывоза укажите точку выдачи'})
+
+        if delivery_type == DeliveryType.PVZ:
+            service = (attrs.get('delivery_service') or '').strip()
+            city = (attrs.get('delivery_city') or '').strip()
+
+            if not service:
+                raise serializers.ValidationError({'delivery_service': 'Выберите службу доставки'})
+            if service not in PVZ_SERVICE_CHOICES:
+                raise serializers.ValidationError({'delivery_service': 'Недопустимая служба доставки'})
+            if not city:
+                raise serializers.ValidationError({'delivery_city': 'Укажите город для доставки до ПВЗ'})
 
         return attrs
 

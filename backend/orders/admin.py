@@ -1,7 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Count
 
 from .models import Order, OrderItem, OrderStatus
+from .services import cancel_order, OrderCancellationError
 
 
 class OrderItemInline(admin.TabularInline):
@@ -100,9 +101,53 @@ class OrderAdmin(admin.ModelAdmin):
     set_status_completed.short_description = 'Поставить статус: COMPLETED'
 
     def set_status_canceled(self, request, queryset):
-        self._set_status(request, queryset, OrderStatus.CANCELED)
+        updated = 0
+        skipped = 0
+        errors = 0
+
+        for order in queryset:
+            try:
+                before_status = order.status
+                cancel_order(order)
+                if before_status != OrderStatus.CANCELED:
+                    updated += 1
+                else:
+                    skipped += 1
+            except OrderCancellationError:
+                errors += 1
+
+        if updated:
+            self.message_user(
+                request,
+                f'Отменено заказов: {updated}',
+                level=messages.SUCCESS,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f'Уже были отменены: {skipped}',
+                level=messages.INFO,
+            )
+        if errors:
+            self.message_user(
+                request,
+                f'Не удалось отменить (например, завершены): {errors}',
+                level=messages.WARNING,
+            )
 
     set_status_canceled.short_description = 'Поставить статус: CANCELED'
+
+    def save_model(self, request, obj, form, change):
+        if change and obj.pk:
+            previous = Order.objects.filter(pk=obj.pk).only('status').first()
+            if previous and previous.status != obj.status and obj.status == OrderStatus.CANCELED:
+                try:
+                    cancel_order(previous)
+                    obj.status = OrderStatus.CANCELED
+                except OrderCancellationError as exc:
+                    self.message_user(request, str(exc), level=messages.ERROR)
+                    obj.status = previous.status
+        super().save_model(request, obj, form, change)
 
     def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser:

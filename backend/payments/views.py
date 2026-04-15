@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
 
 from orders.models import OrderStatus
-from catalog.models import Product
+from orders.services import cancel_order, OrderCancellationError
 from .models import Payment
 from .serializers import CreatePaymentSerializer
 from .services.yookassa_client import create_payment_for_order, fetch_payment
@@ -43,50 +43,8 @@ def _sync_order_paid(order: Order):
         order.save(update_fields=[f for f in ['status', 'is_paid', 'updated_at'] if hasattr(order, f)])
 
 
-def _restore_order_stock(order: Order):
-    order = Order.objects.select_for_update().get(pk=order.pk)
-    items = list(
-        order.items
-        .select_for_update()
-        .order_by('id')
-    )
-    product_ids = [item.product_id for item in items if item.product_id]
-    locked_products = {
-        product.id: product
-        for product in Product.objects.select_for_update().filter(id__in=product_ids)
-    }
-    touched = []
-    for item in items:
-        product = locked_products.get(item.product_id)
-        if not product:
-            continue
-        product.stock += item.quantity
-        touched.append(product)
-    if touched:
-        Product.objects.bulk_update(touched, ['stock'])
-
-
-def _cancel_open_payments(order: Order):
-    Payment.objects.filter(
-        order=order,
-        status__in=[Payment.Status.PENDING, Payment.Status.WAITING_FOR_CAPTURE],
-    ).update(status=Payment.Status.CANCELED, updated_at=timezone.now())
-
-
 def _sync_order_canceled(order: Order):
-    with transaction.atomic():
-        order = Order.objects.select_for_update().get(pk=order.pk)
-        if getattr(order, 'status', None) == OrderStatus.CANCELED:
-            return
-        current_status = getattr(order, 'status', None)
-        if current_status == OrderStatus.NEW and not Payment.objects.filter(order=order, status=Payment.Status.SUCCEEDED).exists():
-            _restore_order_stock(order)
-        if hasattr(order, 'status'):
-            order.status = OrderStatus.CANCELED
-        if hasattr(order, 'is_paid'):
-            order.is_paid = False
-        order.save(update_fields=[f for f in ['status', 'is_paid', 'updated_at'] if hasattr(order, f)])
-        _cancel_open_payments(order)
+    return cancel_order(order)
 
 
 def _rollback_order_on_payment_creation_failure(order: Order):
@@ -103,7 +61,10 @@ def _rollback_order_on_payment_creation_failure(order: Order):
             ],
         ).exists():
             return
-        _sync_order_canceled(order)
+        try:
+            _sync_order_canceled(order)
+        except OrderCancellationError:
+            return
 
 
 class CreatePaymentView(APIView):
@@ -245,7 +206,14 @@ class YooKassaWebhookView(APIView):
             _sync_order_paid(p.order)
 
         if new_status == Payment.Status.CANCELED:
-            _sync_order_canceled(p.order)
+            try:
+                _sync_order_canceled(p.order)
+            except OrderCancellationError as exc:
+                logger.warning(
+                    "Webhook YooKassa: отмена заказа #%s отклонена: %s",
+                    p.order_id,
+                    str(exc),
+                )
 
         logger.info(
             "Webhook YooKassa: event=%s, payment_id=%s, order_id=%s, payment_status=%s, order_status=%s",
@@ -283,6 +251,13 @@ class PaymentSyncView(APIView):
         if new_status == Payment.Status.SUCCEEDED:
             _sync_order_paid(p.order)
         elif new_status == Payment.Status.CANCELED:
-            _sync_order_canceled(p.order)
+            try:
+                _sync_order_canceled(p.order)
+            except OrderCancellationError as exc:
+                logger.warning(
+                    "Sync YooKassa: отмена заказа #%s отклонена: %s",
+                    p.order_id,
+                    str(exc),
+                )
 
         return Response({"status": p.status}, status=status.HTTP_200_OK)
