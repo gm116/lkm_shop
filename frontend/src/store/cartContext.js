@@ -275,6 +275,11 @@ export function CartProvider({children}) {
             if (nextQty <= 0) {
                 if (item._cartItemId) {
                     await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
+                } else {
+                    await authedRequest('/api/cart/items/', {
+                        method: 'POST',
+                        body: {product_id: id, quantity: 0},
+                    });
                 }
             } else {
                 await authedRequest('/api/cart/items/', {
@@ -285,6 +290,19 @@ export function CartProvider({children}) {
 
             await reloadAuthCart();
         } catch (e) {
+            // На случай рассинхронизации id позиции корзины удаляем по product_id
+            if (nextQty <= 0) {
+                try {
+                    await authedRequest('/api/cart/items/', {
+                        method: 'POST',
+                        body: {product_id: id, quantity: 0},
+                    });
+                    await reloadAuthCart();
+                    return;
+                } catch {
+                    // ignore and show the original error below
+                }
+            }
             notify.error(e?.message || 'Не удалось изменить количество');
         } finally {
             setPending(id, false);
@@ -302,13 +320,31 @@ export function CartProvider({children}) {
         if (!accessToken) return;
 
         const item = cart.find(i => i.id === id);
-        if (!item || !item._cartItemId) return;
+        if (!item) return;
 
         setPending(id, true);
         try {
-            await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
+            if (item._cartItemId) {
+                await authedRequest(`/api/cart/items/${item._cartItemId}/`, {method: 'DELETE'});
+            } else {
+                await authedRequest('/api/cart/items/', {
+                    method: 'POST',
+                    body: {product_id: id, quantity: 0},
+                });
+            }
             await reloadAuthCart();
         } catch (e) {
+            // fallback на удаление по product_id
+            try {
+                await authedRequest('/api/cart/items/', {
+                    method: 'POST',
+                    body: {product_id: id, quantity: 0},
+                });
+                await reloadAuthCart();
+                return;
+            } catch {
+                // ignore and show the original error below
+            }
             notify.error(e?.message || 'Не удалось удалить товар');
         } finally {
             setPending(id, false);

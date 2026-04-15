@@ -4,50 +4,100 @@ import styles from '../styles/StaffOrderPage.module.css';
 import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
 
-const STATUSES = ['new', 'paid', 'shipped', 'completed', 'canceled'];
+const STATUS_SEQUENCE = ['new', 'paid', 'shipped', 'completed'];
+const STATUS_LABELS = {
+    new: 'Ожидает оплаты',
+    paid: 'К сборке',
+    shipped: 'Отгружен',
+    completed: 'Доставлен',
+    canceled: 'Отменен',
+};
 
-function statusLabel(s) {
-    if (s === 'new') return 'Ожидает оплаты';
-    if (s === 'paid') return 'Оплачен';
-    if (s === 'shipped') return 'Отгружен';
-    if (s === 'completed') return 'Доставлен';
-    if (s === 'canceled') return 'Отменён';
-    return s || '';
+const NEXT_STATUS = {
+    new: 'paid',
+    paid: 'shipped',
+    shipped: 'completed',
+};
+
+const DELIVERY_SERVICE_LABELS = {
+    ozon: 'Ozon Доставка',
+    kit: 'КИТ',
+    delovie_linii: 'Деловые линии',
+    cdek: 'СДЭК',
+};
+
+function statusLabel(status) {
+    return STATUS_LABELS[status] || status || '';
 }
 
-function fmtMoney(v) {
-    const n = Number(v || 0);
-    return n.toLocaleString('ru-RU');
+function fmtMoney(value) {
+    const n = Number(value || 0);
+    return n.toLocaleString('ru-RU', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
 }
 
-function fmtDateTime(v) {
-    if (!v) return '';
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) return String(v);
+function fmtDateTime(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
     return d.toLocaleString('ru-RU', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     });
 }
 
-function safeStr(v) {
-    return v == null ? '' : String(v);
+function safeStr(value) {
+    return value == null ? '' : String(value);
 }
 
-function itemName(it) {
-    return it?.product_name_snapshot || it?.product_name || it?.name || '';
+function itemName(item) {
+    return item?.product_name_snapshot || item?.product_name || item?.name || 'Товар';
 }
 
-function itemProductId(it) {
-    return it?.product_id || it?.product || it?.id || null;
+function itemProductId(item) {
+    return item?.product_id || item?.product || item?.id || null;
+}
+
+function itemImage(item, productImageMap) {
+    const direct =
+        item?.image_url_snapshot ||
+        item?.product_image_snapshot ||
+        item?.image_url ||
+        item?.image ||
+        '';
+
+    if (direct) return direct;
+
+    const productId = itemProductId(item);
+    if (!productId) return '';
+
+    return productImageMap.get(String(productId)) || '';
+}
+
+function deliveryLabel(type) {
+    if (type === 'store_pickup') return 'Самовывоз';
+    if (type === 'pvz') return 'ПВЗ';
+    return type || '—';
+}
+
+function allowedStatuses(currentStatus) {
+    if (!currentStatus) return STATUS_SEQUENCE;
+    if (currentStatus === 'completed' || currentStatus === 'canceled') return [currentStatus];
+    if (currentStatus === 'new') return ['new', 'paid', 'canceled'];
+    if (currentStatus === 'paid') return ['paid', 'shipped', 'canceled'];
+    if (currentStatus === 'shipped') return ['shipped', 'completed', 'canceled'];
+    return [currentStatus];
 }
 
 async function readJsonSafe(res) {
     const text = await res.text();
     if (!text) return null;
+
     try {
         return JSON.parse(text);
     } catch {
@@ -55,33 +105,23 @@ async function readJsonSafe(res) {
     }
 }
 
-function itemImage(it, productImageMap) {
-    const direct =
-        it?.image_url_snapshot ||
-        it?.product_image_snapshot ||
-        it?.image_url ||
-        it?.image ||
-        '';
-
-    if (direct) return direct;
-
-    const pid = itemProductId(it);
-    if (!pid) return '';
-
-    return productImageMap.get(String(pid)) || '';
-}
-
-function deliveryLabel(type) {
-    if (type === 'store_pickup') return 'Самовывоз';
-    if (type === 'courier') return 'Курьер';
-    if (type === 'pvz') return 'ПВЗ';
-    return type || '';
+function LoadingSkeleton() {
+    return (
+        <div className={styles.loadingLayout}>
+            <div className={styles.skeletonHeader}/>
+            <div className={styles.skeletonTall}/>
+            <div className={styles.skeletonMedium}/>
+            <div className={styles.skeletonMedium}/>
+            <div className={styles.skeletonSide}/>
+        </div>
+    );
 }
 
 export default function StaffOrderPage() {
     const {id} = useParams();
     const location = useLocation();
     const [searchParams] = useSearchParams();
+
     const {authFetch} = useAuth();
     const notify = useNotify();
 
@@ -89,29 +129,31 @@ export default function StaffOrderPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [order, setOrder] = useState(null);
-
     const [nextStatus, setNextStatus] = useState('new');
+
+    const [productImageMap, setProductImageMap] = useState(() => new Map());
+    const inFlightRef = useRef(new Set());
+
+    const urlGet = useMemo(() => `/api/staff/orders/${id}/`, [id]);
+    const urlStatus = useMemo(() => `/api/staff/orders/${id}/status/`, [id]);
+
+    const backTo = searchParams.get('back') || location.state?.backTo || '/staff/orders';
 
     useEffect(() => {
         if (error) notify.error(error);
     }, [error, notify]);
 
-    const urlGet = useMemo(() => `/api/staff/orders/${id}/`, [id]);
-    const urlStatus = useMemo(() => `/api/staff/orders/${id}/status/`, [id]);
-
-    // кэш картинок по product_id (строка → url)
-    const [productImageMap, setProductImageMap] = useState(() => new Map());
-    const inFlightRef = useRef(new Set());
-
-    const load = useCallback(async () => {
+    const loadOrder = useCallback(async () => {
         setError('');
         setLoading(true);
+
         try {
             const res = await authFetch(urlGet, {method: 'GET'});
             if (!res.ok) {
                 const data = await readJsonSafe(res);
                 throw new Error(data?.detail || 'Не удалось загрузить заказ');
             }
+
             const data = await readJsonSafe(res);
             setOrder(data);
             setNextStatus(data?.status || 'new');
@@ -124,64 +166,60 @@ export default function StaffOrderPage() {
     }, [authFetch, urlGet]);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        loadOrder();
+    }, [loadOrder]);
 
-    // подтягиваем картинки для product_id, которых нет в кэше
+    const orderItems = useMemo(() => (Array.isArray(order?.items) ? order.items : []), [order]);
+
     useEffect(() => {
-        const items = Array.isArray(order?.items) ? order.items : [];
-        if (!items.length) return;
+        if (!orderItems.length) return;
 
         const ids = new Set();
+        for (const item of orderItems) {
+            const hasImage =
+                item?.image_url_snapshot ||
+                item?.product_image_snapshot ||
+                item?.image_url ||
+                item?.image;
 
-        for (const it of items) {
-            const alreadyInItem =
-                it?.image_url_snapshot ||
-                it?.product_image_snapshot ||
-                it?.image_url ||
-                it?.image;
+            if (hasImage) continue;
 
-            if (alreadyInItem) continue;
+            const productId = itemProductId(item);
+            if (!productId) continue;
 
-            const pid = itemProductId(it);
-            if (!pid) continue;
-
-            const key = String(pid);
+            const key = String(productId);
             if (productImageMap.has(key)) continue;
             if (inFlightRef.current.has(key)) continue;
 
             ids.add(key);
         }
 
-        if (ids.size === 0) return;
+        if (!ids.size) return;
 
         let cancelled = false;
 
         const fetchOne = async (key) => {
             inFlightRef.current.add(key);
             try {
-                // ВАЖНО: у тебя в urls это /api/catalog/products/<pk>/
                 const res = await authFetch(`/api/catalog/products/${key}/`, {method: 'GET'});
                 if (!res.ok) return;
 
                 const data = await readJsonSafe(res);
-
-                // твой ProductDetailSerializer возвращает images: [url, ...]
-                const url =
+                const imageUrl =
                     (Array.isArray(data?.images) && data.images[0]) ||
                     data?.image ||
                     data?.image_url ||
                     '';
 
-                if (!cancelled && url) {
-                    setProductImageMap(prev => {
+                if (!cancelled && imageUrl) {
+                    setProductImageMap((prev) => {
                         const next = new Map(prev);
-                        next.set(key, url);
+                        next.set(key, imageUrl);
                         return next;
                     });
                 }
             } catch {
-                // Один неудачный запрос к карточке товара не должен ломать загрузку остальных изображений.
+                // ignore
             } finally {
                 inFlightRef.current.delete(key);
             }
@@ -189,10 +227,10 @@ export default function StaffOrderPage() {
 
         const run = async () => {
             const list = Array.from(ids);
-            const CONCURRENCY = 6;
+            const concurrency = 6;
 
-            for (let i = 0; i < list.length; i += CONCURRENCY) {
-                const chunk = list.slice(i, i + CONCURRENCY);
+            for (let i = 0; i < list.length; i += concurrency) {
+                const chunk = list.slice(i, i + concurrency);
                 await Promise.allSettled(chunk.map(fetchOne));
                 if (cancelled) break;
             }
@@ -203,7 +241,7 @@ export default function StaffOrderPage() {
         return () => {
             cancelled = true;
         };
-    }, [order, authFetch, productImageMap]);
+    }, [orderItems, authFetch, productImageMap]);
 
     const patchStatus = async () => {
         const res = await authFetch(urlStatus, {
@@ -220,6 +258,7 @@ export default function StaffOrderPage() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status: nextStatus}),
         });
+
         if (res.status !== 405) return res;
 
         res = await authFetch(urlStatus, {
@@ -227,11 +266,13 @@ export default function StaffOrderPage() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status: nextStatus}),
         });
+
         return res;
     };
 
     const saveStatus = async () => {
         if (!order) return;
+
         if (nextStatus === order.status) {
             notify.info('Статус уже выбран');
             return;
@@ -255,10 +296,10 @@ export default function StaffOrderPage() {
             if (updated) {
                 setOrder(updated);
                 setNextStatus(updated.status || nextStatus);
-                notify.success(`Статус заказа обновлен: ${statusLabel(updated.status || nextStatus)}`);
+                notify.success(`Статус обновлен: ${statusLabel(updated.status || nextStatus)}`);
             } else {
-                await load();
-                notify.success('Статус заказа обновлен');
+                await loadOrder();
+                notify.success('Статус обновлен');
             }
         } catch (e) {
             setError(e?.message || 'Ошибка');
@@ -267,193 +308,246 @@ export default function StaffOrderPage() {
         }
     };
 
-    const pickupAddress = order?.pickup_point_data?.address || '';
+    const itemsAmount = useMemo(
+        () => orderItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0),
+        [orderItems],
+    );
+
+    const canChangeStatus = !!order && order.status !== 'completed' && order.status !== 'canceled';
+    const statusOptions = useMemo(() => allowedStatuses(order?.status), [order?.status]);
+    const suggestedNext = NEXT_STATUS[order?.status] || '';
+
+    const hasContacts = Boolean(safeStr(order?.customer_name) && safeStr(order?.customer_phone));
+
     const pickupName = order?.pickup_point_data?.name || '';
-    const itemsTotal = (order?.items || []).reduce((sum, item) => sum + Number(item?.quantity || 0), 0);
-    const backTo = searchParams.get('back') || location.state?.backTo || '/staff/orders';
+    const pickupAddress = order?.pickup_point_data?.address || '';
 
     return (
         <div className={styles.page}>
             <div className={styles.shell}>
-                <div className={styles.head}>
-                    <div className={styles.headLeft}>
-                        <h1 className={styles.title}>Заказ #{id}</h1>
-                        <div className={styles.sub}>
-                            {order?.created_at ? fmtDateTime(order.created_at) : ''}
+                <header className={styles.header}>
+                    <div className={styles.headerMain}>
+                        <div className={styles.titleRow}>
+                            <h1 className={styles.title}>Сборка заказа #{id}</h1>
+                            {order ? (
+                                <span className={`${styles.statusBadge} ${styles[`statusTone_${safeStr(order.status)}`] || ''}`}>
+                                    {statusLabel(order.status)}
+                                </span>
+                            ) : null}
                         </div>
-                        <div className={styles.heroStats}>
-                            <div className={styles.heroStat}>
-                                <span className={styles.heroStatValue}>{itemsTotal}</span>
-                                <span className={styles.heroStatLabel}>товаров</span>
-                            </div>
-                            <div className={styles.heroStat}>
-                                <span className={styles.heroStatValue}>{fmtMoney(order?.total_amount || 0)} ₽</span>
-                                <span className={styles.heroStatLabel}>сумма</span>
-                            </div>
-                            <div className={styles.heroStat}>
-                                <span className={styles.heroStatValue}>{deliveryLabel(order?.delivery_type)}</span>
-                                <span className={styles.heroStatLabel}>доставка</span>
-                            </div>
+                        <div className={styles.metaRow}>
+                            <span className={styles.metaItem}>Создан: {fmtDateTime(order?.created_at)}</span>
+                            <span className={styles.metaItem}>Обновлен: {fmtDateTime(order?.updated_at)}</span>
+                            <span className={styles.metaItem}>Доставка: {deliveryLabel(order?.delivery_type)}</span>
                         </div>
                     </div>
-                    <div className={styles.headRight}>
-                        <Link to={backTo} className={styles.btnLight}>Назад</Link>
+
+                    <div className={styles.headerStats}>
+                        <div className={styles.statCard}>
+                            <div className={styles.statValue}>{itemsAmount}</div>
+                            <div className={styles.statLabel}>товаров</div>
+                        </div>
+                        <div className={styles.statCard}>
+                            <div className={styles.statValue}>{fmtMoney(order?.total_amount)} ₽</div>
+                            <div className={styles.statLabel}>сумма заказа</div>
+                        </div>
                     </div>
-                </div>
+
+                    <div className={styles.headerActions}>
+                        <button className={styles.btnGhost} type="button" onClick={loadOrder} disabled={loading}>
+                            Обновить
+                        </button>
+                        <Link to={backTo} className={styles.btnLight}>Назад к списку</Link>
+                    </div>
+                </header>
 
                 {error ? <div className={styles.error}>{error}</div> : null}
 
                 {loading ? (
-                    <div className={styles.loadingGrid}>
-                        <div className={styles.skeletonCard}/>
-                        <div className={styles.skeletonCard}/>
-                        <div className={styles.skeletonCardWide}/>
-                    </div>
+                    <LoadingSkeleton/>
                 ) : !order ? (
                     <div className={styles.empty}>Заказ не найден</div>
                 ) : (
-                    <>
-                        <div className={styles.grid}>
-                            <div className={styles.card}>
-                                <div className={styles.cardHead}>
-                                    <div className={styles.cardTitle}>Статус</div>
-                                    <span
-                                        className={`${styles.statusPill} ${styles[`status_${safeStr(order.status)}`] || ''}`}>
-                                        {statusLabel(order.status)}
-                                    </span>
-                                </div>
-
-                                <div className={styles.statusRow}>
-                                    <select
-                                        className={styles.select}
-                                        value={nextStatus}
-                                        onChange={(e) => setNextStatus(e.target.value)}
-                                    >
-                                        {STATUSES.map(s => (
-                                            <option key={s} value={s}>{statusLabel(s)}</option>
-                                        ))}
-                                    </select>
-
-                                    <button
-                                        className={styles.btnPrimary}
-                                        onClick={saveStatus}
-                                        disabled={saving || nextStatus === order.status}
-                                    >
-                                        {saving ? 'Сохраняю…' : 'Сохранить'}
-                                    </button>
-                                </div>
-
-                                <div className={styles.statusMeta}>
-                                    <div className={styles.metaText}>
-                                        Сумма: {fmtMoney(order.total_amount)} ₽
-                                    </div>
-                                    <div className={styles.metaTextMuted}>
-                                        Товаров: {itemsTotal}
+                    <div className={styles.layout}>
+                        <main className={styles.mainCol}>
+                            <section className={styles.card}>
+                                <div className={styles.cardHeader}>
+                                    <div>
+                                        <h2 className={styles.cardTitle}>Позиции к сборке</h2>
+                                        <p className={styles.cardSub}>Состав заказа и количество по каждой позиции</p>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className={styles.card}>
-                                <div className={styles.cardHead}>
-                                    <div className={styles.cardTitle}>Клиент</div>
+                                <div className={styles.itemsList}>
+                                    {orderItems.map((item) => {
+                                        const imageUrl = itemImage(item, productImageMap);
+                                        const name = itemName(item);
+                                        const productId = itemProductId(item);
+                                        const maxQty = Number(item?.quantity || 0);
+                                        const rowTotal = maxQty * Number(item?.price_snapshot || 0);
+                                        const productUrl = productId ? `/product/${productId}` : null;
+
+                                        return (
+                                            <article className={styles.itemRow} key={item.id}>
+                                                <div className={styles.itemMedia}>
+                                                    {productUrl ? (
+                                                        <Link to={productUrl} target="_blank" rel="noreferrer">
+                                                            {imageUrl ? (
+                                                                <img className={styles.itemImg} src={imageUrl} alt={name}/>
+                                                            ) : (
+                                                                <div className={styles.itemImgPlaceholder}>Фото</div>
+                                                            )}
+                                                        </Link>
+                                                    ) : imageUrl ? (
+                                                        <img className={styles.itemImg} src={imageUrl} alt={name}/>
+                                                    ) : (
+                                                        <div className={styles.itemImgPlaceholder}>Фото</div>
+                                                    )}
+                                                </div>
+
+                                                <div className={styles.itemBody}>
+                                                    {productUrl ? (
+                                                        <Link to={productUrl} target="_blank" rel="noreferrer" className={styles.itemName}>{name}</Link>
+                                                    ) : (
+                                                        <div className={styles.itemName}>{name}</div>
+                                                    )}
+                                                    <div className={styles.itemMeta}>SKU/ID: #{safeStr(productId) || '—'} • {fmtMoney(item.price_snapshot)} ₽</div>
+                                                </div>
+
+                                                <div className={styles.itemQtyBlock}>
+                                                    <div className={styles.itemQtyValue}>{maxQty} шт.</div>
+                                                </div>
+
+                                                <div className={styles.itemTotal}>{fmtMoney(rowTotal)} ₽</div>
+                                            </article>
+                                        );
+                                    })}
                                 </div>
 
-                                <div className={styles.kv}>
-                                    <div className={styles.k}>Имя</div>
-                                    <div className={styles.v}>{safeStr(order.customer_name)}</div>
-
-                                    <div className={styles.k}>Телефон</div>
-                                    <div className={styles.v}>{safeStr(order.customer_phone)}</div>
-
-                                    <div className={styles.k}>Email</div>
-                                    <div className={styles.v}>{safeStr(order.customer_email)}</div>
+                                <div className={styles.totalRow}>
+                                    <span>Итого по заказу</span>
+                                    <span>{fmtMoney(order.total_amount)} ₽</span>
                                 </div>
-                            </div>
+                            </section>
+                        </main>
 
-                            <div className={styles.card}>
-                                <div className={styles.cardHead}>
-                                    <div className={styles.cardTitle}>Доставка</div>
+                        <section className={styles.middleCol}>
+                            <section className={styles.card}>
+                                <h2 className={styles.cardTitle}>Клиент</h2>
+                                <div className={styles.kvGrid}>
+                                    <div className={styles.key}>Имя</div>
+                                    <div className={styles.val}>{safeStr(order.customer_name) || '—'}</div>
+                                    <div className={styles.key}>Телефон</div>
+                                    <div className={styles.val}>{safeStr(order.customer_phone) || '—'}</div>
+                                    <div className={styles.key}>Email</div>
+                                    <div className={styles.val}>{safeStr(order.customer_email) || '—'}</div>
                                 </div>
+                            </section>
 
-                                <div className={styles.kv}>
-                                    <div className={styles.k}>Тип</div>
-                                    <div className={styles.v}>{deliveryLabel(order.delivery_type)}</div>
-
-                                    <div className={styles.k}>Служба</div>
-                                    <div className={styles.v}>{safeStr(order.delivery_service) || '—'}</div>
-
-                                    <div className={styles.k}>Город</div>
-                                    <div className={styles.v}>{safeStr(order.delivery_city) || '—'}</div>
-
-                                    <div className={styles.k}>Адрес</div>
-                                    <div className={styles.v}>{safeStr(order.delivery_address_text) || '—'}</div>
+                            <section className={styles.card}>
+                                <h2 className={styles.cardTitle}>Доставка</h2>
+                                <div className={styles.kvGrid}>
+                                    <div className={styles.key}>Формат</div>
+                                    <div className={styles.val}>{deliveryLabel(order.delivery_type)}</div>
+                                    <div className={styles.key}>Служба</div>
+                                    <div className={styles.val}>{DELIVERY_SERVICE_LABELS[order.delivery_service] || safeStr(order.delivery_service) || '—'}</div>
+                                    <div className={styles.key}>Город</div>
+                                    <div className={styles.val}>{safeStr(order.delivery_city) || '—'}</div>
+                                    <div className={styles.key}>Адрес</div>
+                                    <div className={styles.val}>{safeStr(order.delivery_address_text) || '—'}</div>
                                 </div>
 
                                 {(pickupName || pickupAddress) ? (
-                                    <div className={styles.pickup}>
-                                        <div className={styles.pickupTitle}>ПВЗ</div>
+                                    <div className={styles.pickupBlock}>
+                                        <div className={styles.pickupTitle}>Пункт выдачи</div>
                                         {pickupName ? <div className={styles.pickupLine}>{pickupName}</div> : null}
                                         {pickupAddress ? <div className={styles.pickupLine}>{pickupAddress}</div> : null}
                                     </div>
                                 ) : null}
+                            </section>
 
-                                {order.comment ? (
-                                    <div className={styles.comment}>
-                                        {safeStr(order.comment)}
+                            <section className={styles.card}>
+                                <h2 className={styles.cardTitle}>Комментарий</h2>
+                                <p className={styles.commentText}>{safeStr(order.comment) || 'Комментарий не указан'}</p>
+                            </section>
+                        </section>
+
+                        <aside className={styles.sideCol}>
+                            <section className={`${styles.card} ${styles.statusCard}`}>
+                                <h2 className={styles.cardTitle}>Статус заказа</h2>
+
+                                <div className={styles.timeline}>
+                                    {STATUS_SEQUENCE.map((status, index) => {
+                                        const currentIndex = STATUS_SEQUENCE.indexOf(order.status);
+                                        const done = currentIndex >= index && order.status !== 'canceled';
+                                        const isCurrent = order.status === status;
+
+                                        return (
+                                            <div className={styles.timelineRow} key={status}>
+                                                <span className={`${styles.timelineDot} ${done ? styles.timelineDotDone : ''} ${isCurrent ? styles.timelineDotCurrent : ''}`}/>
+                                                <span className={`${styles.timelineLine} ${done ? styles.timelineLineDone : ''}`}/>
+                                                <span className={`${styles.timelineLabel} ${isCurrent ? styles.timelineLabelCurrent : ''}`}>
+                                                    {statusLabel(status)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className={styles.statusControls}>
+                                    <label className={styles.label}>Изменить статус</label>
+                                    <select
+                                        className={styles.select}
+                                        value={nextStatus}
+                                        onChange={(e) => setNextStatus(e.target.value)}
+                                        disabled={!canChangeStatus || saving}
+                                    >
+                                        {statusOptions.map((status) => (
+                                            <option key={status} value={status}>{statusLabel(status)}</option>
+                                        ))}
+                                    </select>
+
+                                    {canChangeStatus && suggestedNext ? (
+                                        <button
+                                            className={styles.btnGhost}
+                                            type="button"
+                                            onClick={() => setNextStatus(suggestedNext)}
+                                            disabled={saving}
+                                        >
+                                            Следующий этап: {statusLabel(suggestedNext)}
+                                        </button>
+                                    ) : null}
+
+                                    <button
+                                        className={styles.btnPrimary}
+                                        type="button"
+                                        onClick={saveStatus}
+                                        disabled={!canChangeStatus || saving || nextStatus === order.status}
+                                    >
+                                        {saving ? 'Сохраняю…' : 'Сохранить статус'}
+                                    </button>
+
+                                    {!canChangeStatus ? (
+                                        <div className={styles.statusHint}>У этого заказа статус больше не меняется.</div>
+                                    ) : null}
+                                </div>
+                            </section>
+
+                            <section className={styles.card}>
+                                <h2 className={styles.cardTitle}>Контроль перед сменой статуса</h2>
+                                <div className={styles.checkList}>
+                                    <div className={styles.checkItem}>
+                                        <span className={`${styles.checkDot} ${order.payment_succeeded ? styles.checkDotOk : ''}`}/>
+                                        <span className={styles.checkText}>Оплата подтверждена</span>
                                     </div>
-                                ) : null}
-                            </div>
-                        </div>
-
-                        <div className={styles.card}>
-                            <div className={styles.cardHead}>
-                                <div className={styles.cardTitle}>Состав заказа</div>
-                            </div>
-
-                            <div className={styles.items}>
-                                {(order.items || []).map(it => {
-                                    const img = itemImage(it, productImageMap);
-                                    const name = itemName(it);
-
-                                    return (
-                                        <div className={styles.itemRow} key={it.id}>
-                                            <div className={styles.itemLeft}>
-                                                <div className={styles.itemMedia}>
-                                                    {img ? (
-                                                        <img className={styles.itemImg} src={img} alt={name}/>
-                                                    ) : (
-                                                        <div className={styles.itemImgPh}/>
-                                                    )}
-                                                </div>
-
-                                                <div className={styles.itemInfo}>
-                                                    <div className={styles.itemName}>{name}</div>
-                                                    <div className={styles.itemSub}>
-                                                        #{safeStr(itemProductId(it))}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className={styles.itemRight}>
-                                                <div className={styles.itemQty}>{safeStr(it.quantity)} шт</div>
-                                                <div className={styles.itemPrice}>{fmtMoney(it.price_snapshot)} ₽</div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className={styles.total}>
-                                <div>Итого</div>
-                                <div>{fmtMoney(order.total_amount)} ₽</div>
-                            </div>
-                        </div>
-
-                        <div className={styles.footerMeta}>
-                            <div>Создан: {fmtDateTime(order.created_at)}</div>
-                            <div>Обновлён: {fmtDateTime(order.updated_at)}</div>
-                        </div>
-                    </>
+                                    <div className={styles.checkItem}>
+                                        <span className={`${styles.checkDot} ${hasContacts ? styles.checkDotOk : ''}`}/>
+                                        <span className={styles.checkText}>Контакты клиента заполнены</span>
+                                    </div>
+                                </div>
+                            </section>
+                        </aside>
+                    </div>
                 )}
             </div>
         </div>

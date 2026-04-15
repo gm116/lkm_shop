@@ -109,6 +109,11 @@ class CartItemUpsertView(APIView):
         with transaction.atomic():
             cart, _ = Cart.objects.select_for_update().get_or_create(user=request.user)
             product = _get_locked_product(data['product_id'])
+
+            if data['quantity'] <= 0:
+                CartItem.objects.select_for_update().filter(cart=cart, product=product).delete()
+                return Response(serialize_cart(request, cart), status=status.HTTP_200_OK)
+
             _validate_cart_quantity(product, data['quantity'])
 
             item, created = CartItem.objects.select_for_update().get_or_create(
