@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {confirmPasswordReset, validatePasswordReset} from '../api/auth';
 import {useNotify} from '../store/notifyContext';
@@ -9,7 +9,7 @@ function normalizeResetError(rawMessage) {
     const lower = message.toLowerCase();
 
     if (lower.includes('устарела') || lower.includes('недействительна')) {
-        return 'Ссылка недействительна или уже устарела';
+        return 'Ссылка недействительна или устарела';
     }
     if (lower.includes('пароли не совпадают')) {
         return 'Пароли не совпадают';
@@ -20,6 +20,7 @@ function normalizeResetError(rawMessage) {
     if (lower.includes('new_password_confirm:')) {
         return message.replace(/^new_password_confirm:\s*/i, '');
     }
+
     return message || 'Не удалось обновить пароль';
 }
 
@@ -31,9 +32,29 @@ export default function ResetPasswordPage() {
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
     const [linkChecking, setLinkChecking] = useState(true);
     const [linkValid, setLinkValid] = useState(false);
     const [linkError, setLinkError] = useState('');
+
+    const errors = useMemo(() => {
+        const next = {};
+
+        if (!password) {
+            next.password = 'Введите новый пароль';
+        } else if (password.length < 8) {
+            next.password = 'Минимум 8 символов';
+        }
+
+        if (!passwordConfirm) {
+            next.passwordConfirm = 'Повторите пароль';
+        } else if (password && password !== passwordConfirm) {
+            next.passwordConfirm = 'Пароли не совпадают';
+        }
+
+        return next;
+    }, [password, passwordConfirm]);
 
     useEffect(() => {
         let cancelled = false;
@@ -56,9 +77,9 @@ export default function ResetPasswordPage() {
                 if (!cancelled) {
                     setLinkValid(true);
                 }
-            } catch (e) {
+            } catch (error) {
                 if (!cancelled) {
-                    const message = normalizeResetError(e?.message);
+                    const message = normalizeResetError(error?.message);
                     setLinkError(message);
                     notify.error(message);
                 }
@@ -78,25 +99,10 @@ export default function ResetPasswordPage() {
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        if (loading) return;
+        if (loading || linkChecking || !linkValid) return;
 
-        if (linkChecking) {
-            notify.info('Проверяем ссылку...');
-            return;
-        }
-
-        if (!linkValid) {
-            notify.error(linkError || 'Ссылка недействительна или уже устарела');
-            return;
-        }
-
-        if (password.length < 8) {
-            notify.warning('Пароль должен быть не короче 8 символов');
-            return;
-        }
-
-        if (password !== passwordConfirm) {
-            notify.warning('Пароли не совпадают');
+        setSubmitted(true);
+        if (Object.keys(errors).length > 0) {
             return;
         }
 
@@ -110,82 +116,99 @@ export default function ResetPasswordPage() {
             });
             notify.success('Пароль обновлён. Теперь можно войти');
             navigate('/login', {replace: true});
-        } catch (e) {
-            notify.error(normalizeResetError(e?.message));
+        } catch (error) {
+            notify.error(normalizeResetError(error?.message));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className={styles.container}>
-            <h2 className={styles.title}>Новый пароль</h2>
-            <p className={styles.subtitle}>
-                Придумайте новый пароль для входа в аккаунт.
-            </p>
+        <div className={styles.page}>
+            <div className={styles.shellSingle}>
+                <section className={styles.panel}>
+                    <div className={styles.head}>
+                        <h1 className={styles.title}>Новый пароль</h1>
+                        <p className={styles.subtitle}>Укажите новый пароль для входа в аккаунт.</p>
+                    </div>
 
-            <div className={styles.card}>
-                {linkChecking ? (
-                    <div className={styles.statusBox}>Проверяем ссылку...</div>
-                ) : null}
-                {!linkChecking && !linkValid ? (
-                    <>
-                        <div className={`${styles.statusBox} ${styles.statusError}`}>
-                            {linkError || 'Ссылка недействительна или уже устарела'}
-                        </div>
-                        <div className={styles.row}>
-                            <button type="button" className={styles.link} onClick={() => navigate('/forgot-password')}>
-                                Запросить новую ссылку
-                            </button>
-                            <button type="button" className={styles.link} onClick={() => navigate('/login')}>
-                                Ко входу
-                            </button>
-                        </div>
-                    </>
-                ) : null}
+                    {linkChecking ? <div className={styles.statusBox}>Проверяем ссылку...</div> : null}
 
-                {linkValid ? (
-                    <form className={styles.form} onSubmit={onSubmit}>
-                        <div className={styles.helperText}>
-                            Минимум 8 символов. Не используйте простой или очевидный пароль.
-                        </div>
-                        <input
-                            className={styles.input}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Новый пароль (минимум 8 символов)"
-                            type="password"
-                            autoComplete="new-password"
-                            disabled={loading}
-                        />
-                        <input
-                            className={styles.input}
-                            value={passwordConfirm}
-                            onChange={(e) => setPasswordConfirm(e.target.value)}
-                            placeholder="Повторите новый пароль"
-                            type="password"
-                            autoComplete="new-password"
-                            disabled={loading}
-                        />
+                    {!linkChecking && !linkValid ? (
+                        <>
+                            <div className={`${styles.statusBox} ${styles.statusError}`}>
+                                {linkError || 'Ссылка недействительна или устарела'}
+                            </div>
+                            <div className={styles.linksRow}>
+                                <button type="button" className={styles.link} onClick={() => navigate('/forgot-password')}>
+                                    Запросить новую ссылку
+                                </button>
+                                <button type="button" className={styles.linkMuted} onClick={() => navigate('/login')}>
+                                    Ко входу
+                                </button>
+                            </div>
+                        </>
+                    ) : null}
 
-                        <button
-                            className={styles.btn}
-                            type="submit"
-                            disabled={loading || !password || !passwordConfirm}
-                        >
-                            {loading ? 'Сохраняем...' : 'Сохранить пароль'}
-                        </button>
+                    {linkValid ? (
+                        <form className={styles.form} onSubmit={onSubmit} noValidate>
+                            <p className={styles.helperText}>Минимум 8 символов. Не используйте очевидные комбинации.</p>
 
-                        <div className={styles.row}>
-                            <button type="button" className={styles.link} onClick={() => navigate('/login')}>
-                                Ко входу
+                            <div className={styles.columns}>
+                                <label className={styles.field}>
+                                    <span className={styles.label}>
+                                        Новый пароль
+                                        <span className={styles.labelRequired}>*</span>
+                                    </span>
+                                    <input
+                                        className={`${styles.input} ${submitted && errors.password ? styles.inputInvalid : ''}`}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Минимум 8 символов"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        disabled={loading}
+                                    />
+                                    <span className={styles.fieldError}>
+                                        {submitted ? errors.password || '' : ''}
+                                    </span>
+                                </label>
+
+                                <label className={styles.field}>
+                                    <span className={styles.label}>
+                                        Повторите пароль
+                                        <span className={styles.labelRequired}>*</span>
+                                    </span>
+                                    <input
+                                        className={`${styles.input} ${submitted && errors.passwordConfirm ? styles.inputInvalid : ''}`}
+                                        value={passwordConfirm}
+                                        onChange={(e) => setPasswordConfirm(e.target.value)}
+                                        placeholder="Повторите пароль"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        disabled={loading}
+                                    />
+                                    <span className={styles.fieldError}>
+                                        {submitted ? errors.passwordConfirm || '' : ''}
+                                    </span>
+                                </label>
+                            </div>
+
+                            <button className={styles.btnPrimary} type="submit" disabled={loading}>
+                                {loading ? 'Сохраняем...' : 'Сохранить пароль'}
                             </button>
-                            <button type="button" className={styles.link} onClick={() => navigate('/catalog')}>
-                                В каталог
-                            </button>
-                        </div>
-                    </form>
-                ) : null}
+
+                            <div className={styles.linksRow}>
+                                <button type="button" className={styles.link} onClick={() => navigate('/login')}>
+                                    Ко входу
+                                </button>
+                                <button type="button" className={styles.linkMuted} onClick={() => navigate('/catalog')}>
+                                    В каталог
+                                </button>
+                            </div>
+                        </form>
+                    ) : null}
+                </section>
             </div>
         </div>
     );

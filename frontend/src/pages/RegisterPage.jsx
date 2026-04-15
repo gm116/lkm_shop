@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../store/authContext';
-import {useNotify} from '../store/notifyContext';
+import {useMemo, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useAuth} from '../store/authContext';
 import styles from '../styles/Auth.module.css';
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterPage() {
     const navigate = useNavigate();
-    const { register } = useAuth();
-    const notify = useNotify();
+    const {register} = useAuth();
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -15,41 +15,51 @@ export default function RegisterPage() {
     const [passwordConfirm, setPasswordConfirm] = useState('');
 
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    const errors = useMemo(() => {
+        const next = {};
+        const usernameValue = username.trim();
+        const emailValue = email.trim();
+
+        if (!usernameValue) {
+            next.username = 'Введите логин';
+        } else if (usernameValue.length < 3) {
+            next.username = 'Минимум 3 символа';
+        }
+
+        if (emailValue && !emailPattern.test(emailValue)) {
+            next.email = 'Введите корректный email';
+        }
+
+        if (!password) {
+            next.password = 'Введите пароль';
+        } else if (password.length < 8) {
+            next.password = 'Минимум 8 символов';
+        }
+
+        if (!passwordConfirm) {
+            next.passwordConfirm = 'Повторите пароль';
+        } else if (password && password !== passwordConfirm) {
+            next.passwordConfirm = 'Пароли не совпадают';
+        }
+
+        return next;
+    }, [username, email, password, passwordConfirm]);
 
     const onSubmit = async (e) => {
         e.preventDefault();
+        setSubmitted(true);
+
+        if (Object.keys(errors).length > 0) {
+            return;
+        }
+
         setLoading(true);
-
         try {
-            const usernameValue = username.trim();
-            const emailValue = email.trim();
-
-            if (!usernameValue) {
-                notify.warning('Введите логин');
-                return;
-            }
-
-            if (emailValue) {
-                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(emailValue)) {
-                    notify.warning('Введите корректный email');
-                    return;
-                }
-            }
-
-            if (password.length < 8) {
-                notify.warning('Пароль должен быть не короче 8 символов');
-                return;
-            }
-
-            if (password !== passwordConfirm) {
-                notify.warning('Пароли не совпадают');
-                return;
-            }
-
             await register({
-                username: usernameValue,
-                email: emailValue,
+                username: username.trim(),
+                email: email.trim(),
                 password,
             });
             navigate('/profile');
@@ -61,67 +71,111 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <h2 className={styles.title}>Регистрация</h2>
+        <div className={styles.page}>
+            <div className={styles.shell}>
+                <aside className={styles.aside}>
+                    <h2 className={styles.asideTitle}>Новый аккаунт</h2>
+                    <p className={styles.asideText}>
+                        Регистрация занимает минуту. После входа можно оформлять заказы без повторного ввода данных.
+                    </p>
+                    <ul className={styles.asideList}>
+                        <li className={styles.asideItem}>Сохранение адресов и контактных данных</li>
+                        <li className={styles.asideItem}>История заказов и повторное оформление</li>
+                        <li className={styles.asideItem}>Контроль статусов и уведомлений</li>
+                    </ul>
+                </aside>
 
-            <div className={styles.card}>
-                <form className={styles.form} onSubmit={onSubmit}>
-                    <input
-                        className={styles.input}
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Логин"
-                    />
-                    <input
-                        className={styles.input}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email (необязательно)"
-                        type="email"
-                        autoComplete="email"
-                    />
-                    <input
-                        className={styles.input}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Пароль (минимум 8 символов)"
-                        type="password"
-                        autoComplete="new-password"
-                    />
-                    <input
-                        className={styles.input}
-                        value={passwordConfirm}
-                        onChange={(e) => setPasswordConfirm(e.target.value)}
-                        placeholder="Повторите пароль"
-                        type="password"
-                        autoComplete="new-password"
-                    />
-
-                    <button
-                        className={styles.btn}
-                        disabled={loading || !username.trim() || password.length < 8 || !passwordConfirm}
-                    >
-                        {loading ? 'Создаём...' : 'Зарегистрироваться'}
-                    </button>
-
-                    <div className={styles.row}>
-                        <button
-                            type="button"
-                            className={styles.link}
-                            onClick={() => navigate('/login')}
-                        >
-                            Уже есть аккаунт
-                        </button>
-
-                        <button
-                            type="button"
-                            className={styles.link}
-                            onClick={() => navigate('/catalog')}
-                        >
-                            В каталог
-                        </button>
+                <section className={styles.panel}>
+                    <div className={styles.head}>
+                        <h1 className={styles.title}>Регистрация</h1>
+                        <p className={styles.subtitle}>Заполните обязательные поля для создания аккаунта</p>
                     </div>
-                </form>
+
+                    <form className={styles.form} onSubmit={onSubmit} noValidate>
+                        <label className={styles.field}>
+                            <span className={styles.label}>
+                                Логин
+                                <span className={styles.labelRequired}>*</span>
+                            </span>
+                            <input
+                                className={`${styles.input} ${submitted && errors.username ? styles.inputInvalid : ''}`}
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Придумайте логин"
+                                autoComplete="username"
+                            />
+                            <span className={styles.fieldError}>
+                                {submitted ? errors.username || '' : ''}
+                            </span>
+                        </label>
+
+                        <label className={styles.field}>
+                            <span className={styles.label}>Email</span>
+                            <input
+                                className={`${styles.input} ${submitted && errors.email ? styles.inputInvalid : ''}`}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="example@mail.ru"
+                                type="email"
+                                autoComplete="email"
+                            />
+                            <span className={styles.fieldError}>
+                                {submitted ? errors.email || '' : ''}
+                            </span>
+                        </label>
+
+                        <div className={styles.columns}>
+                            <label className={styles.field}>
+                                <span className={styles.label}>
+                                    Пароль
+                                    <span className={styles.labelRequired}>*</span>
+                                </span>
+                                <input
+                                    className={`${styles.input} ${submitted && errors.password ? styles.inputInvalid : ''}`}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Минимум 8 символов"
+                                    type="password"
+                                    autoComplete="new-password"
+                                />
+                                <span className={styles.fieldError}>
+                                    {submitted ? errors.password || '' : ''}
+                                </span>
+                            </label>
+
+                            <label className={styles.field}>
+                                <span className={styles.label}>
+                                    Повторите пароль
+                                    <span className={styles.labelRequired}>*</span>
+                                </span>
+                                <input
+                                    className={`${styles.input} ${submitted && errors.passwordConfirm ? styles.inputInvalid : ''}`}
+                                    value={passwordConfirm}
+                                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                                    placeholder="Повторите пароль"
+                                    type="password"
+                                    autoComplete="new-password"
+                                />
+                                <span className={styles.fieldError}>
+                                    {submitted ? errors.passwordConfirm || '' : ''}
+                                </span>
+                            </label>
+                        </div>
+
+                        <button className={styles.btnPrimary} disabled={loading}>
+                            {loading ? 'Создаём...' : 'Зарегистрироваться'}
+                        </button>
+
+                        <div className={styles.linksRow}>
+                            <button type="button" className={styles.link} onClick={() => navigate('/login')}>
+                                Уже есть аккаунт
+                            </button>
+                            <button type="button" className={styles.linkMuted} onClick={() => navigate('/catalog')}>
+                                В каталог
+                            </button>
+                        </div>
+                    </form>
+                </section>
             </div>
         </div>
     );

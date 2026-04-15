@@ -1,23 +1,41 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../store/authContext';
+import {useMemo, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useAuth} from '../store/authContext';
 import styles from '../styles/Auth.module.css';
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const {login} = useAuth();
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    const errors = useMemo(() => {
+        const next = {};
+
+        if (!username.trim()) {
+            next.username = 'Введите логин или email';
+        }
+        if (!password) {
+            next.password = 'Введите пароль';
+        }
+
+        return next;
+    }, [username, password]);
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setSubmitted(true);
 
+        if (Object.keys(errors).length > 0) {
+            return;
+        }
+
+        setLoading(true);
         try {
-            await login({ username: username.trim(), password });
+            await login({username: username.trim(), password});
             navigate('/profile');
         } catch (err) {
             // Уведомление уже показывает authContext
@@ -27,55 +45,91 @@ export default function LoginPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <h2 className={styles.title}>Вход</h2>
+        <div className={styles.page}>
+            <div className={styles.shell}>
+                <aside className={styles.aside}>
+                    <h2 className={styles.asideTitle}>Личный кабинет</h2>
+                    <p className={styles.asideText}>
+                        Быстрый вход к заказам, адресам и статусам доставки в одном месте.
+                    </p>
+                    <ul className={styles.asideList}>
+                        <li className={styles.asideItem}>Отслеживание заказов в реальном времени</li>
+                        <li className={styles.asideItem}>Быстрое повторное оформление из истории</li>
+                        <li className={styles.asideItem}>Доступ к оплате и документам по заказу</li>
+                    </ul>
+                </aside>
 
-            <div className={styles.card}>
-                <form className={styles.form} onSubmit={onSubmit}>
-                    <input
-                        className={styles.input}
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Логин"
-                    />
-                    <input
-                        className={styles.input}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Пароль"
-                        type="password"
-                    />
-
-                    <button className={styles.btn} disabled={loading || !username.trim() || !password}>
-                        {loading ? 'Входим...' : 'Войти'}
-                    </button>
-
-                    <div className={styles.row}>
-                        <button
-                            type="button"
-                            className={styles.link}
-                            onClick={() => navigate('/register')}
-                        >
-                            Регистрация
-                        </button>
-
-                        <button
-                            type="button"
-                            className={styles.link}
-                            onClick={() => navigate('/forgot-password')}
-                        >
-                            Забыли пароль?
-                        </button>
-
-                        <button
-                            type="button"
-                            className={styles.link}
-                            onClick={() => navigate('/catalog')}
-                        >
-                            В каталог
-                        </button>
+                <section className={styles.panel}>
+                    <div className={styles.head}>
+                        <h1 className={styles.title}>Вход</h1>
+                        <p className={styles.subtitle}>Введите данные аккаунта</p>
                     </div>
-                </form>
+
+                    <form className={styles.form} onSubmit={onSubmit} noValidate>
+                        <label className={styles.field}>
+                            <span className={styles.label}>
+                                Логин или email
+                                <span className={styles.labelRequired}>*</span>
+                            </span>
+                            <input
+                                className={`${styles.input} ${submitted && errors.username ? styles.inputInvalid : ''}`}
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Введите логин или email"
+                                autoComplete="username"
+                            />
+                            <span className={styles.fieldError}>
+                                {submitted ? errors.username || '' : ''}
+                            </span>
+                        </label>
+
+                        <label className={styles.field}>
+                            <span className={styles.label}>
+                                Пароль
+                                <span className={styles.labelRequired}>*</span>
+                            </span>
+                            <input
+                                className={`${styles.input} ${submitted && errors.password ? styles.inputInvalid : ''}`}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Введите пароль"
+                                type="password"
+                                autoComplete="current-password"
+                            />
+                            <span className={styles.fieldError}>
+                                {submitted ? errors.password || '' : ''}
+                            </span>
+                        </label>
+
+                        <button className={styles.btnPrimary} disabled={loading}>
+                            {loading ? 'Входим...' : 'Войти'}
+                        </button>
+
+                        <div className={styles.linksRow}>
+                            <button
+                                type="button"
+                                className={styles.link}
+                                onClick={() => navigate('/forgot-password')}
+                            >
+                                Забыли пароль?
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.link}
+                                onClick={() => navigate('/register')}
+                            >
+                                Регистрация
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.linkMuted}
+                                onClick={() => navigate('/catalog')}
+                            >
+                                В каталог
+                            </button>
+                        </div>
+                    </form>
+                </section>
             </div>
         </div>
     );

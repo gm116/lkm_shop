@@ -67,6 +67,20 @@ function StaffRoute({children}) {
     return children;
 }
 
+function GuestOnlyRoute({children}) {
+    const {isAuthenticated, loading} = useAuth();
+
+    if (loading) {
+        return null;
+    }
+
+    if (isAuthenticated) {
+        return <Navigate to="/profile" replace/>;
+    }
+
+    return children;
+}
+
 function AdminRoute({children}) {
     const {isAuthenticated, loading, permissions} = useAuth();
 
@@ -117,10 +131,38 @@ export default function App() {
                         <Route path="/checkout" element={<CheckoutPage/>}/>
                         <Route path="/checkout/redirect" element={<CheckoutRedirectPage/>}/>
 
-                        <Route path="/login" element={<LoginPage/>}/>
-                        <Route path="/register" element={<RegisterPage/>}/>
-                        <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
-                        <Route path="/reset-password/:uid/:token" element={<ResetPasswordPage/>}/>
+                        <Route
+                            path="/login"
+                            element={
+                                <GuestOnlyRoute>
+                                    <LoginPage/>
+                                </GuestOnlyRoute>
+                            }
+                        />
+                        <Route
+                            path="/register"
+                            element={
+                                <GuestOnlyRoute>
+                                    <RegisterPage/>
+                                </GuestOnlyRoute>
+                            }
+                        />
+                        <Route
+                            path="/forgot-password"
+                            element={
+                                <GuestOnlyRoute>
+                                    <ForgotPasswordPage/>
+                                </GuestOnlyRoute>
+                            }
+                        />
+                        <Route
+                            path="/reset-password/:uid/:token"
+                            element={
+                                <GuestOnlyRoute>
+                                    <ResetPasswordPage/>
+                                </GuestOnlyRoute>
+                            }
+                        />
 
                         <Route
                             path="/profile"

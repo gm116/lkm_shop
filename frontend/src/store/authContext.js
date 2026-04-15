@@ -200,7 +200,6 @@ export function AuthProvider({children}) {
     }, []);
 
     const register = async ({username, email, password}) => {
-        setLoading(true);
         try {
             const r = await registerUser({username, email, password});
             setAccessToken(r.access);
@@ -220,13 +219,10 @@ export function AuthProvider({children}) {
             const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'register');
             notify.error(friendlyMessage);
             throw new Error(friendlyMessage);
-        } finally {
-            setLoading(false);
         }
     };
 
     const login = async ({username, password}) => {
-        setLoading(true);
         try {
             const r = await loginUser({username, password});
             setAccessToken(r.access);
@@ -246,8 +242,6 @@ export function AuthProvider({children}) {
             const friendlyMessage = normalizeAuthErrorMessage(e?.message, 'login');
             notify.error(friendlyMessage);
             throw new Error(friendlyMessage);
-        } finally {
-            setLoading(false);
         }
     };
 
