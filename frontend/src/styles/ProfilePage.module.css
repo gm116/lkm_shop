@@ -1467,6 +1467,35 @@
     margin-bottom: 10px;
 }
 
+.orderActionsRow {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.orderActionBtn {
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid #d7e2f4;
+    border-radius: 10px;
+    background: #f4f7fd;
+    color: #2f537f;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.orderActionBtn:hover {
+    background: #eaf0fb;
+    border-color: #c7d8f4;
+}
+
+.orderActionBtn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 .orderInfoCard {
     border: 1px solid #eef0f4;
     border-radius: 12px;
@@ -1646,6 +1675,10 @@
 
     .orderInfoGrid {
         grid-template-columns: 1fr;
+    }
+
+    .orderActionsRow {
+        justify-content: flex-start;
     }
 
     .orderItemCardNew {

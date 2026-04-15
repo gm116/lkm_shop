@@ -1,11 +1,11 @@
 import {Link, useNavigate, useLocation} from 'react-router-dom';
-import {FaSearch, FaShoppingBasket, FaHeart, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar, FaTags} from 'react-icons/fa';
+import {FaSearch, FaShoppingBasket, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar, FaTags} from 'react-icons/fa';
 import {useCart} from '../store/cartContext';
 import {useAuth} from '../store/authContext';
 import styles from '../styles/Header.module.css';
 import {useEffect, useMemo, useRef} from 'react';
 
-export default function Header({favoriteCount = 0}) {
+export default function Header() {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -91,14 +91,6 @@ export default function Header({favoriteCount = 0}) {
                                         </span>
                                         {cartCount > 0 && <span className={styles.badge}>{cartCount}</span>}
                                         <span className={styles.iconLabel}>Корзина</span>
-                                    </Link>
-
-                                    <Link to="/favorites" className={styles.iconBtn}>
-                                        <span className={styles.iconCircle} aria-hidden="true">
-                                            <FaHeart size={18}/>
-                                        </span>
-                                        {favoriteCount > 0 && <span className={styles.badge}>{favoriteCount}</span>}
-                                        <span className={styles.iconLabel}>Избранное</span>
                                     </Link>
                                 </>
                             )}

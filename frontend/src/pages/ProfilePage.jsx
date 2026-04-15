@@ -1,7 +1,9 @@
 import {useEffect, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import styles from '../styles/ProfilePage.module.css';
 import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
+import {useCart} from '../store/cartContext';
 
 function formatMoney(v) {
     const n = Number(v || 0);
@@ -71,7 +73,9 @@ function phoneIsValid(value) {
 }
 
 export default function ProfilePage() {
+    const navigate = useNavigate();
     const {accessToken, user, logout, authFetch, reloadUser} = useAuth();
+    const {cart, repeatOrder} = useCart();
     const notify = useNotify();
 
     const [meLoading, setMeLoading] = useState(true);
@@ -112,6 +116,7 @@ export default function ProfilePage() {
     const [ordersLoading, setOrdersLoading] = useState(true);
     const [ordersError, setOrdersError] = useState('');
     const [orders, setOrders] = useState([]);
+    const [reorderLoadingId, setReorderLoadingId] = useState(null);
 
     const [addrTouched, setAddrTouched] = useState(false);
     const [addrInvalid, setAddrInvalid] = useState({
@@ -504,6 +509,50 @@ export default function ProfilePage() {
             setOrdersError(e?.message || 'Ошибка');
         } finally {
             setOrdersLoading(false);
+        }
+    };
+
+    const handleRepeatOrder = async (orderId) => {
+        if (!orderId || reorderLoadingId) return;
+
+        if (cart.length > 0) {
+            const ok = window.confirm(
+                'Текущая корзина будет заменена товарами из выбранного заказа. Продолжить?'
+            );
+            if (!ok) return;
+        }
+
+        setReorderLoadingId(orderId);
+        try {
+            const data = await repeatOrder(orderId, {replace: true});
+
+            const detail = data?.detail || 'Товары из заказа добавлены в корзину';
+            const skipped = Number(data?.skipped_positions || 0);
+            const partial = Number(data?.partial_positions || 0);
+            const added = Number(data?.added_positions || 0);
+
+            if (added <= 0) {
+                notify.error(detail);
+                return;
+            }
+
+            if (skipped > 0 || partial > 0) {
+                notify.warning(`${detail}. Добавлено позиций: ${added}, пропущено: ${skipped}.`);
+            } else {
+                notify.success(detail);
+            }
+
+            navigate('/cart');
+        } catch (e) {
+            const detail = e?.payload?.detail || e?.message || 'Не удалось повторить заказ';
+            const skipped = Number(e?.payload?.skipped_positions || 0);
+            if (skipped > 0) {
+                notify.error(`${detail}. Недоступно позиций: ${skipped}.`);
+            } else {
+                notify.error(detail);
+            }
+        } finally {
+            setReorderLoadingId(null);
         }
     };
 
@@ -1079,6 +1128,17 @@ export default function ProfilePage() {
                                                             {uniqueItemsText} в заказе
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                <div className={styles.orderActionsRow}>
+                                                    <button
+                                                        className={styles.orderActionBtn}
+                                                        type="button"
+                                                        onClick={() => handleRepeatOrder(o.id)}
+                                                        disabled={reorderLoadingId === o.id}
+                                                    >
+                                                        {reorderLoadingId === o.id ? 'Добавляю в корзину…' : 'Повторить заказ'}
+                                                    </button>
                                                 </div>
 
                                                 {items.length > 0 ? (

@@ -372,6 +372,37 @@ export function CartProvider({children}) {
         }
     }, [isAuthenticated, accessToken, authedRequest, reloadAuthCart, notify]);
 
+    const repeatOrder = useCallback(async (orderId, {replace = true} = {}) => {
+        if (!orderId) throw new Error('Не указан заказ');
+        if (!isAuthenticated || !accessToken) throw new Error('Не авторизован');
+
+        setLoading(true);
+        try {
+            const res = await authFetch(`/api/orders/${orderId}/repeat/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({replace}),
+            });
+
+            if (res.status === 401) {
+                await logout();
+                throw new Error('Не авторизован');
+            }
+
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                const err = new Error(data?.detail || 'Не удалось повторить заказ');
+                err.payload = data || null;
+                throw err;
+            }
+
+            setCart(mapApiCartToLocal(data?.cart || data));
+            return data || {};
+        } finally {
+            setLoading(false);
+        }
+    }, [isAuthenticated, accessToken, authFetch, logout]);
+
     const value = useMemo(() => ({
         cart,
         loading,
@@ -381,7 +412,8 @@ export function CartProvider({children}) {
         decreaseCount,
         removeFromCart,
         clearCart,
-    }), [cart, loading, pendingIds, addToCart, increaseQuantity, decreaseCount, removeFromCart, clearCart]);
+        repeatOrder,
+    }), [cart, loading, pendingIds, addToCart, increaseQuantity, decreaseCount, removeFromCart, clearCart, repeatOrder]);
 
     return (
         <CartContext.Provider value={value}>
