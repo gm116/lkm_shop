@@ -37,8 +37,8 @@
     margin: 0;
     font-size: 30px;
     line-height: 1;
-    font-weight: 900;
-    letter-spacing: -0.03em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: #111827;
 }
 
@@ -46,7 +46,7 @@
     margin-top: 6px;
     font-size: 12px;
     color: #6b7280;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .headRight {
@@ -223,17 +223,15 @@
 .overviewLabel,
 .healthLabel {
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
     color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
 }
 
 .overviewValue,
 .healthValue {
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1.05;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -241,7 +239,7 @@
 .healthNote {
     font-size: 11px;
     color: #6b7280;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .attentionCard {
@@ -272,7 +270,7 @@
 .operationMiniValue {
     font-size: 18px;
     line-height: 1;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -309,13 +307,13 @@
 
 .attentionLabel {
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .attentionValue {
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1;
-    font-weight: 900;
+    font-weight: 700;
 }
 
 .toneNeutral {
@@ -351,14 +349,14 @@
 
 .panelTitle {
     font-size: 16px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
 .panelHint {
     margin-top: 3px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     color: #6b7280;
 }
 
@@ -429,7 +427,7 @@
 
 .periodPopoverTitle {
     font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     margin-bottom: 10px;
 }
@@ -505,7 +503,7 @@
 .chartTooltipTitle {
     margin-bottom: 6px;
     font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -595,14 +593,14 @@
 .funnelStepTitle {
     margin-top: 3px;
     font-size: 14px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
 .funnelStepValue {
     font-size: 19px;
     line-height: 1;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -653,7 +651,7 @@
 .subSectionTitle {
     margin-bottom: 8px;
     font-size: 12px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -696,7 +694,7 @@
 .productName,
 .recentId {
     font-size: 13px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -712,7 +710,7 @@
 .cityRevenue,
 .recentTotal {
     font-size: 13px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
     text-align: right;
 }
@@ -735,7 +733,7 @@
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    font-weight: 900;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -791,7 +789,7 @@
     justify-content: center;
     color: #fff;
     font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
 }
 
 @keyframes shimmer {

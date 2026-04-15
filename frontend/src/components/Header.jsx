@@ -1,5 +1,5 @@
 import {Link, useNavigate, useLocation} from 'react-router-dom';
-import {FaSearch, FaShoppingBasket, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar, FaTags} from 'react-icons/fa';
+import {FaSearch, FaShoppingBasket, FaUser, FaBoxOpen, FaSignOutAlt, FaChartBar, FaCog} from 'react-icons/fa';
 import {useCart} from '../store/cartContext';
 import {useAuth} from '../store/authContext';
 import styles from '../styles/Header.module.css';
@@ -48,12 +48,14 @@ export default function Header() {
         navigate('/login');
     };
 
+    const showAuthLoading = loading && isAuthenticated;
+
     return (
         <header className={styles.headerOuter}>
             <div className={styles.header}>
                 <div className={styles.left}>
                     <a href="/catalog" className={styles.logo} onClick={handleLogoClick}>
-                        Магазин
+                        ВсеЭмалиРу
                     </a>
                 </div>
 
@@ -72,7 +74,7 @@ export default function Header() {
                 </div>
 
                 <div className={styles.right}>
-                    {loading ? (
+                    {showAuthLoading ? (
                         <div className={styles.rightLoading} aria-hidden="true">
                             {[0, 1, 2].map((idx) => (
                                 <span className={`${styles.iconBtn} ${styles.iconBtnSkeleton}`} key={`hdr-sk-${idx}`}>
@@ -110,9 +112,9 @@ export default function Header() {
                                             {isAdmin && (
                                                 <Link to="/admin" className={styles.iconBtn}>
                                                     <span className={styles.iconCircle} aria-hidden="true">
-                                                        <FaTags size={18}/>
+                                                        <FaCog size={18}/>
                                                     </span>
-                                                    <span className={styles.iconLabel}>Товары</span>
+                                                    <span className={styles.iconLabel}>Управление</span>
                                                 </Link>
                                             )}
                                             <Link to="/staff/orders" className={styles.iconBtn}>

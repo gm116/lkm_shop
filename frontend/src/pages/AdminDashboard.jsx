@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Link} from 'react-router-dom';
 import {FaChevronDown} from 'react-icons/fa';
 import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
@@ -96,7 +97,10 @@ function focusFirstInvalidControl(formEl) {
 }
 
 function formatMoney(v) {
-    return Number(v || 0).toLocaleString('ru-RU');
+    return Number(v || 0).toLocaleString('ru-RU', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    });
 }
 
 function formatDateTime(value) {
@@ -115,6 +119,22 @@ function formatDateTime(value) {
 function getProductPreview(product) {
     if (!Array.isArray(product?.images) || product.images.length === 0) return '';
     return product.images[0]?.image_url || '';
+}
+
+const ORDER_STATUS_LABELS = {
+    new: 'Новый',
+    paid: 'Оплачен',
+    shipped: 'В пути',
+    completed: 'Доставлен',
+    canceled: 'Отменен',
+};
+
+function userDisplayName(user) {
+    if (!user) return '';
+    const fullName = String(user.full_name || '').trim();
+    if (fullName) return fullName;
+    if (user.username) return user.username;
+    return user.email || `ID ${user.id}`;
 }
 
 export default function AdminDashboard() {
@@ -138,6 +158,28 @@ export default function AdminDashboard() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({count: 0, page: 1, page_size: 10, total_pages: 1});
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [userActionKey, setUserActionKey] = useState('');
+    const [users, setUsers] = useState([]);
+    const [userSearch, setUserSearch] = useState('');
+    const [usersPage, setUsersPage] = useState(1);
+    const [usersPagination, setUsersPagination] = useState({count: 0, page: 1, page_size: 12, total_pages: 1});
+    const [usersStatusFilter, setUsersStatusFilter] = useState('all');
+    const [usersRoleFilter, setUsersRoleFilter] = useState('all');
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [loadingUserOrders, setLoadingUserOrders] = useState(false);
+    const [userOrders, setUserOrders] = useState([]);
+    const [userOrdersStats, setUserOrdersStats] = useState({
+        orders_total: 0,
+        spent_total: 0,
+        completed_revenue: 0,
+        avg_check: 0,
+        new_count: 0,
+        paid_count: 0,
+        shipped_count: 0,
+        completed_count: 0,
+        canceled_count: 0,
+    });
 
     const [form, setForm] = useState(EMPTY_FORM);
     const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY_FORM);
@@ -220,11 +262,56 @@ export default function AdminDashboard() {
         }
     }, [authFetch]);
 
+    const loadUsers = useCallback(async ({searchValue, statusValue, roleValue, pageValue} = {}) => {
+        setLoadingUsers(true);
+        try {
+            const finalSearch = (searchValue ?? userSearch).trim();
+            const finalStatus = statusValue ?? usersStatusFilter;
+            const finalRole = roleValue ?? usersRoleFilter;
+            const finalPage = pageValue ?? usersPage;
+
+            const qs = new URLSearchParams();
+            if (finalSearch) qs.set('search', finalSearch);
+            if (finalStatus && finalStatus !== 'all') qs.set('status', finalStatus);
+            if (finalRole && finalRole !== 'all') qs.set('role', finalRole);
+            qs.set('page', String(finalPage || 1));
+
+            const res = await authFetch(`/api/users/admin/users/?${qs.toString()}`, {method: 'GET'});
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось загрузить пользователей');
+            }
+
+            const list = Array.isArray(data?.results) ? data.results : [];
+            setUsers(list);
+            setUsersPagination({
+                count: Number(data?.count || 0),
+                page: Number(data?.page || finalPage || 1),
+                page_size: Number(data?.page_size || 12),
+                total_pages: Number(data?.total_pages || 1),
+            });
+            setUsersPage(Number(data?.page || finalPage || 1));
+            setSelectedUserId((prev) => prev || (list[0]?.id ?? null));
+        } catch (e) {
+            setError(e?.message || 'Ошибка загрузки пользователей');
+            setUsers([]);
+            setUsersPagination({count: 0, page: 1, page_size: 12, total_pages: 1});
+        } finally {
+            setLoadingUsers(false);
+        }
+    }, [authFetch, userSearch, usersStatusFilter, usersRoleFilter, usersPage]);
+
     useEffect(() => {
         if (!canUseAdmin) return;
         loadMeta();
         loadProducts('', 1);
     }, [canUseAdmin, loadMeta, loadProducts]);
+
+    useEffect(() => {
+        if (!canUseAdmin) return;
+        if (mode !== 'user') return;
+        loadUsers({pageValue: 1});
+    }, [canUseAdmin, mode, loadUsers]);
 
     const categoryOptions = useMemo(() => {
         const categoryMap = new Map(categories.map((category) => [category.id, category]));
@@ -236,6 +323,78 @@ export default function AdminDashboard() {
             };
         });
     }, [categories]);
+
+    const selectedUser = useMemo(
+        () => users.find((item) => item.id === selectedUserId) || null,
+        [users, selectedUserId]
+    );
+
+    useEffect(() => {
+        if (!users.length) {
+            setSelectedUserId(null);
+            return;
+        }
+        if (!selectedUserId || !users.some((item) => item.id === selectedUserId)) {
+            setSelectedUserId(users[0].id);
+        }
+    }, [users, selectedUserId]);
+
+    useEffect(() => {
+        const loadUserOrders = async () => {
+            if (!selectedUserId || mode !== 'user') {
+                setUserOrders([]);
+                setUserOrdersStats({
+                    orders_total: 0,
+                    spent_total: 0,
+                    completed_revenue: 0,
+                    avg_check: 0,
+                    new_count: 0,
+                    paid_count: 0,
+                    shipped_count: 0,
+                    completed_count: 0,
+                    canceled_count: 0,
+                });
+                return;
+            }
+            setLoadingUserOrders(true);
+            try {
+                const res = await authFetch(`/api/users/admin/users/${selectedUserId}/orders/`, {method: 'GET'});
+                const data = await readJsonSafe(res);
+                if (!res.ok) {
+                    throw new Error(data?.detail || 'Не удалось загрузить заказы пользователя');
+                }
+                setUserOrdersStats({
+                    orders_total: Number(data?.stats?.orders_total || 0),
+                    spent_total: Number(data?.stats?.spent_total || 0),
+                    completed_revenue: Number(data?.stats?.completed_revenue || 0),
+                    avg_check: Number(data?.stats?.avg_check || 0),
+                    new_count: Number(data?.stats?.new_count || 0),
+                    paid_count: Number(data?.stats?.paid_count || 0),
+                    shipped_count: Number(data?.stats?.shipped_count || 0),
+                    completed_count: Number(data?.stats?.completed_count || 0),
+                    canceled_count: Number(data?.stats?.canceled_count || 0),
+                });
+                setUserOrders(Array.isArray(data?.results) ? data.results : []);
+            } catch (e) {
+                setError(e?.message || 'Ошибка загрузки заказов пользователя');
+                setUserOrders([]);
+                setUserOrdersStats({
+                    orders_total: 0,
+                    spent_total: 0,
+                    completed_revenue: 0,
+                    avg_check: 0,
+                    new_count: 0,
+                    paid_count: 0,
+                    shipped_count: 0,
+                    completed_count: 0,
+                    canceled_count: 0,
+                });
+            } finally {
+                setLoadingUserOrders(false);
+            }
+        };
+        loadUserOrders();
+    }, [authFetch, mode, selectedUserId]);
 
     const handleChange = (field, value) => setForm((prev) => ({...prev, [field]: value}));
     const handleCategoryChange = (field, value) => setCategoryForm((prev) => ({...prev, [field]: value}));
@@ -590,8 +749,60 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleUsersSearch = async () => {
+        await loadUsers({searchValue: userSearch, pageValue: 1});
+    };
+
+    const handleUsersStatusFilterChange = async (value) => {
+        setUsersStatusFilter(value);
+        await loadUsers({statusValue: value, pageValue: 1});
+    };
+
+    const handleUsersRoleFilterChange = async (value) => {
+        setUsersRoleFilter(value);
+        await loadUsers({roleValue: value, pageValue: 1});
+    };
+
+    const handleToggleUserActive = async (user) => {
+        if (!user) return;
+        const shouldActivate = !user.is_active;
+        const lockKey = `user:${user.id}`;
+        const confirmText = shouldActivate
+            ? `Разблокировать пользователя ${userDisplayName(user)}?`
+            : `Заблокировать пользователя ${userDisplayName(user)}?`;
+
+        if (!window.confirm(confirmText)) return;
+
+        setError('');
+        setSuccess('');
+        setUserActionKey(lockKey);
+
+        try {
+            const res = await authFetch(`/api/users/admin/users/${user.id}/status/`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({is_active: shouldActivate}),
+            });
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось изменить статус пользователя');
+            }
+
+            setUsers((prev) => prev.map((item) => (item.id === user.id ? data : item)));
+            setSuccess(
+                shouldActivate
+                    ? `Пользователь ${userDisplayName(user)} разблокирован`
+                    : `Пользователь ${userDisplayName(user)} заблокирован`
+            );
+        } catch (e) {
+            setError(e?.message || 'Ошибка изменения статуса пользователя');
+        } finally {
+            setUserActionKey('');
+        }
+    };
+
     if (!canUseAdmin) {
-        return <div className={styles.denied}>Доступ к панели товаров есть только у администратора.</div>;
+        return <div className={styles.denied}>Доступ к административной панели есть только у сотрудников.</div>;
     }
 
     return (
@@ -599,8 +810,8 @@ export default function AdminDashboard() {
             <div className={styles.shell}>
                 <div className={styles.head}>
                     <div>
-                        <h1 className={styles.title}>Товары</h1>
-                        <div className={styles.sub}>Импорт, создание и редактирование товарного каталога</div>
+                        <h1 className={styles.title}>Администрирование</h1>
+                        <div className={styles.sub}>Товары, категории, бренды и пользователи</div>
                     </div>
                 </div>
 
@@ -626,6 +837,13 @@ export default function AdminDashboard() {
                     >
                         Бренды
                     </button>
+                    <button
+                        type="button"
+                        className={`${styles.modeTab} ${mode === 'user' ? styles.modeTabActive : ''}`}
+                        onClick={() => setMode('user')}
+                    >
+                        Пользователи
+                    </button>
                 </div>
 
                 <div className={styles.layout}>
@@ -637,14 +855,18 @@ export default function AdminDashboard() {
                                         ? 'Управление товарами'
                                         : mode === 'category'
                                             ? (editingCategoryId ? 'Редактирование категории' : 'Новая категория')
-                                            : (editingBrandId ? 'Редактирование бренда' : 'Новый бренд')}
+                                            : mode === 'brand'
+                                                ? (editingBrandId ? 'Редактирование бренда' : 'Новый бренд')
+                                                : 'Управление пользователями'}
                                 </div>
                                 {mode === 'product' ? (
                                     <div className={styles.panelHint}>Список товаров. Отсюда можно перейти к редактированию.</div>
                                 ) : mode === 'category' ? (
                                     <div className={styles.panelHint}>Можно создать корневую категорию или вложить ее в существующую</div>
-                                ) : (
+                                ) : mode === 'brand' ? (
                                     <div className={styles.panelHint}>Бренды доступны в карточке товара и при импорте из Excel</div>
+                                ) : (
+                                    <div className={styles.panelHint}>Блокировка и контроль доступа покупателей и сотрудников</div>
                                 )}
                                 {mode === 'product' && productPanelMode === 'manual' && editingProductId ? (
                                     <div className={styles.editingCompact}>
@@ -996,7 +1218,7 @@ export default function AdminDashboard() {
                                     ) : null}
                                 </div>
                             </form>
-                        ) : (
+                        ) : mode === 'brand' ? (
                             <form className={styles.form} onSubmit={handleBrandSubmit} noValidate>
                                 {editingBrandId ? (
                                     <div className={styles.editingInline}>
@@ -1043,6 +1265,129 @@ export default function AdminDashboard() {
                                     ) : null}
                                 </div>
                             </form>
+                        ) : (
+                            <div className={styles.stack}>
+                                <div className={styles.userCard}>
+                                    <div className={styles.userTitleRow}>
+                                        <div className={styles.userTitle}>
+                                            {selectedUser ? userDisplayName(selectedUser) : 'Пользователь не выбран'}
+                                        </div>
+                                        {selectedUser ? (
+                                            <div className={styles.userBadges}>
+                                                <span
+                                                    className={`${styles.userPill} ${
+                                                        selectedUser.is_active ? styles.userPillActive : styles.userPillBlocked
+                                                    }`}
+                                                >
+                                                    {selectedUser.is_active ? 'Активен' : 'Заблокирован'}
+                                                </span>
+                                                <span className={`${styles.userPill} ${styles.userPillRole}`}>
+                                                    {selectedUser.is_staff || selectedUser.is_superuser ? 'Сотрудник' : 'Покупатель'}
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    {selectedUser ? (
+                                        <>
+                                            <div className={styles.userMetaGrid}>
+                                                <div>
+                                                    <div className={styles.userMetaLabel}>Логин</div>
+                                                    <div className={styles.userMetaValue}>{selectedUser.username || '—'}</div>
+                                                </div>
+                                                <div>
+                                                    <div className={styles.userMetaLabel}>Email</div>
+                                                    <div className={styles.userMetaValue}>{selectedUser.email || '—'}</div>
+                                                </div>
+                                                <div>
+                                                    <div className={styles.userMetaLabel}>Заказов</div>
+                                                    <div className={styles.userMetaValue}>{selectedUser.orders_count || 0}</div>
+                                                </div>
+                                                <div>
+                                                    <div className={styles.userMetaLabel}>Последний вход</div>
+                                                    <div className={styles.userMetaValue}>
+                                                        {selectedUser.last_login ? formatDateTime(selectedUser.last_login) : 'Не входил'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className={styles.userMetaLabel}>Дата регистрации</div>
+                                                    <div className={styles.userMetaValue}>
+                                                        {selectedUser.date_joined ? formatDateTime(selectedUser.date_joined) : '—'}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.userOrdersBlock}>
+                                                <div className={styles.userStatsGrid}>
+                                                    <div className={styles.userStatsCard}>
+                                                        <div className={styles.userStatsLabel}>Всего заказов</div>
+                                                        <div className={styles.userStatsValue}>{userOrdersStats.orders_total}</div>
+                                                    </div>
+                                                    <div className={styles.userStatsCard}>
+                                                        <div className={styles.userStatsLabel}>Оборот</div>
+                                                        <div className={styles.userStatsValue}>{formatMoney(userOrdersStats.spent_total)} ₽</div>
+                                                    </div>
+                                                    <div className={styles.userStatsCard}>
+                                                        <div className={styles.userStatsLabel}>Выкуплено</div>
+                                                        <div className={styles.userStatsValue}>{formatMoney(userOrdersStats.completed_revenue)} ₽</div>
+                                                    </div>
+                                                    <div className={styles.userStatsCard}>
+                                                        <div className={styles.userStatsLabel}>Средний чек</div>
+                                                        <div className={styles.userStatsValue}>{formatMoney(userOrdersStats.avg_check)} ₽</div>
+                                                    </div>
+                                                </div>
+                                                <div className={styles.userOrdersTitle}>Последние заказы пользователя</div>
+                                                {loadingUserOrders ? (
+                                                    <div className={styles.userOrdersEmpty}>Загрузка…</div>
+                                                ) : userOrders.length === 0 ? (
+                                                    <div className={styles.userOrdersEmpty}>Заказов пока нет</div>
+                                                ) : (
+                                                    <div className={styles.userOrdersList}>
+                                                        {userOrders.map((order) => (
+                                                            <div className={styles.userOrderRow} key={order.id}>
+                                                                <div className={styles.userOrderMain}>
+                                                                    <div className={styles.userOrderId}>Заказ #{order.id}</div>
+                                                                    <div className={styles.userOrderMeta}>
+                                                                        {ORDER_STATUS_LABELS[order.status] || order.status} · {formatDateTime(order.created_at)}
+                                                                    </div>
+                                                                </div>
+                                                                <div className={styles.userOrderSide}>
+                                                                    <div className={styles.userOrderTotal}>{formatMoney(order.total_amount)} ₽</div>
+                                                                    <div className={styles.userOrderMeta}>{order.items_count || 0} шт.</div>
+                                                                    <Link
+                                                                        to={`/staff/orders/${order.id}`}
+                                                                        state={{backTo: '/admin'}}
+                                                                        className={styles.userOrderLink}
+                                                                    >
+                                                                        Открыть
+                                                                    </Link>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className={styles.formActions}>
+                                                <button
+                                                    type="button"
+                                                    className={`${selectedUser.is_active ? styles.dangerBtn : styles.primaryBtn}`}
+                                                    disabled={userActionKey === `user:${selectedUser.id}`}
+                                                    onClick={() => handleToggleUserActive(selectedUser)}
+                                                >
+                                                    {userActionKey === `user:${selectedUser.id}`
+                                                        ? 'Сохраняю…'
+                                                        : selectedUser.is_active
+                                                            ? 'Заблокировать'
+                                                            : 'Разблокировать'}
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className={styles.empty}>Выберите пользователя в списке справа</div>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </section>
 
@@ -1050,14 +1395,22 @@ export default function AdminDashboard() {
                         <section className={styles.panel}>
                             <div className={styles.panelHead}>
                                 <div className={styles.panelTitle}>
-                                    {mode === 'product' ? 'Товары' : mode === 'category' ? 'Категории' : 'Бренды'}
+                                    {mode === 'product'
+                                        ? 'Товары'
+                                        : mode === 'category'
+                                            ? 'Категории'
+                                            : mode === 'brand'
+                                                ? 'Бренды'
+                                                : 'Пользователи'}
                                 </div>
                                 <div className={styles.panelHint}>
                                     {mode === 'product'
                                         ? ''
                                         : mode === 'category'
                                             ? 'Список категорий каталога. Отсюда можно перейти к редактированию.'
-                                            : 'Список брендов каталога. Отсюда можно перейти к редактированию.'}
+                                            : mode === 'brand'
+                                                ? 'Список брендов каталога. Отсюда можно перейти к редактированию.'
+                                                : 'Поиск, фильтры и блокировка учетных записей'}
                                 </div>
                             </div>
 
@@ -1223,7 +1576,7 @@ export default function AdminDashboard() {
                                         <div className={styles.empty}>Категории пока не найдены</div>
                                     ) : null}
                                 </div>
-                            ) : (
+                            ) : mode === 'brand' ? (
                                 <div className={styles.entityList}>
                                     {brands.map((brand) => (
                                         <div
@@ -1261,6 +1614,111 @@ export default function AdminDashboard() {
                                         <div className={styles.empty}>Бренды пока не найдены</div>
                                     ) : null}
                                 </div>
+                            ) : (
+                                <>
+                                    <div className={styles.userFilters}>
+                                        <input
+                                            className={styles.searchInput}
+                                            value={userSearch}
+                                            onChange={(e) => setUserSearch(e.target.value)}
+                                            placeholder="Поиск по имени, логину и email"
+                                        />
+                                        <SelectField
+                                            className={`${styles.searchInput} ${styles.selectControl} ${styles.filterSelect}`}
+                                            value={usersStatusFilter}
+                                            onChange={(e) => handleUsersStatusFilterChange(e.target.value)}
+                                        >
+                                            <option value="all">Все статусы</option>
+                                            <option value="active">Активные</option>
+                                            <option value="blocked">Заблокированные</option>
+                                        </SelectField>
+                                        <SelectField
+                                            className={`${styles.searchInput} ${styles.selectControl} ${styles.filterSelect}`}
+                                            value={usersRoleFilter}
+                                            onChange={(e) => handleUsersRoleFilterChange(e.target.value)}
+                                        >
+                                            <option value="all">Все роли</option>
+                                            <option value="customers">Покупатели</option>
+                                            <option value="staff">Сотрудники</option>
+                                        </SelectField>
+                                        <button
+                                            type="button"
+                                            className={styles.secondaryBtn}
+                                            onClick={handleUsersSearch}
+                                            disabled={loadingUsers}
+                                        >
+                                            {loadingUsers ? 'Ищу…' : 'Найти'}
+                                        </button>
+                                    </div>
+
+                                    <div className={styles.entityList}>
+                                        {users.map((user) => (
+                                            <div
+                                                key={user.id}
+                                                className={`${styles.entityRow} ${styles.userRowClickable} ${selectedUserId === user.id ? styles.productRowActive : ''}`}
+                                                onClick={() => setSelectedUserId(user.id)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        setSelectedUserId(user.id);
+                                                    }
+                                                }}
+                                                role="button"
+                                                tabIndex={0}
+                                            >
+                                                <div className={styles.productMain}>
+                                                    <div className={styles.productName}>{userDisplayName(user)}</div>
+                                                    <div className={styles.productMeta}>Логин: @{user.username || 'без логина'}</div>
+                                                    <div className={styles.productMeta}>Email: {user.email || 'без email'}</div>
+                                                    <div className={styles.productMeta}>
+                                                        Заказов: {user.orders_count || 0} · {user.is_active ? 'Активен' : 'Заблокирован'} ·
+                                                        {' '}{user.is_staff || user.is_superuser ? 'Сотрудник' : 'Покупатель'}
+                                                    </div>
+                                                </div>
+                                                <div className={styles.productSide}>
+                                                    <div className={styles.userStatusCompact}>
+                                                        {user.is_active ? 'Активен' : 'Заблокирован'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {!loadingUsers && users.length === 0 ? (
+                                            <div className={styles.empty}>Пользователи не найдены</div>
+                                        ) : null}
+                                    </div>
+
+                                    <div className={styles.pagination}>
+                                        <button
+                                            type="button"
+                                            className={styles.secondaryBtn}
+                                            onClick={() => loadUsers({pageValue: usersPage - 1})}
+                                            disabled={loadingUsers || usersPage <= 1}
+                                        >
+                                            Назад
+                                        </button>
+                                        <div className={styles.paginationPages}>
+                                            {Array.from({length: usersPagination.total_pages}, (_, index) => index + 1).map((pageNumber) => (
+                                                <button
+                                                    key={pageNumber}
+                                                    type="button"
+                                                    className={`${styles.pageBtn} ${pageNumber === usersPage ? styles.pageBtnActive : ''}`}
+                                                    onClick={() => loadUsers({pageValue: pageNumber})}
+                                                    disabled={loadingUsers}
+                                                >
+                                                    {pageNumber}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={styles.secondaryBtn}
+                                            onClick={() => loadUsers({pageValue: usersPage + 1})}
+                                            disabled={loadingUsers || usersPage >= usersPagination.total_pages}
+                                        >
+                                            Вперед
+                                        </button>
+                                    </div>
+                                </>
                             )}
                         </section>
                     </aside>

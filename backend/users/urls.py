@@ -5,6 +5,7 @@ from .email_change_api import EmailChangeRequestView, EmailChangeConfirmView
 from .address_api import AddressListCreateView, AddressDetailView, AddressSetDefaultView
 from .me_api import MePrefillView
 from .feedback_api import FeedbackSendView
+from .admin_api import AdminUsersListView, AdminUserStatusView, AdminUserOrdersView
 
 urlpatterns = [
     path('register/', RegistrationRequestCodeView.as_view()),
@@ -24,4 +25,7 @@ urlpatterns = [
     path('addresses/<int:pk>/', AddressDetailView.as_view()),
     path('addresses/<int:pk>/set-default/', AddressSetDefaultView.as_view()),
     path('feedback/', FeedbackSendView.as_view()),
+    path('admin/users/', AdminUsersListView.as_view()),
+    path('admin/users/<int:user_id>/status/', AdminUserStatusView.as_view()),
+    path('admin/users/<int:user_id>/orders/', AdminUserOrdersView.as_view()),
 ]
