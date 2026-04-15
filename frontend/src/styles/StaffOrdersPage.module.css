@@ -123,15 +123,15 @@
 .btnLight,
 .btnGhost,
 .periodButton {
-    height: 40px;
-    border-radius: 14px;
-    border: 1px solid #e6e8ef;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid #d7dce5;
     background: #fff;
     color: #111827;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     outline: none;
-    transition: border-color 0.14s ease, background 0.14s ease, transform 0.12s ease;
+    transition: transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .dateInput {
@@ -148,18 +148,21 @@
 
 .btnLight,
 .btnGhost {
-    padding: 0 16px;
+    padding: 0 14px;
     cursor: pointer;
     white-space: nowrap;
 }
 
 .btnGhost {
-    background: #f9fafb;
+    background: #fff;
+    color: #111827;
 }
 
-.btnLight:active,
-.btnGhost:active {
-    transform: translateY(1px);
+.btnLight:hover,
+.btnGhost:hover {
+    transform: translateY(-1px);
+    background: #f9fafb;
+    border-color: #c7cbd1;
 }
 
 .btnLight:disabled,
@@ -178,8 +181,8 @@
 .periodButton {
     min-width: 220px;
     height: auto;
-    min-height: 40px;
-    padding: 10px 12px;
+    min-height: 38px;
+    padding: 8px 11px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -268,15 +271,15 @@
 .tabBtn {
     height: 38px;
     padding: 0 14px;
-    border-radius: 999px;
-    border: 1px solid #e6e8ef;
+    border-radius: 12px;
+    border: 1px solid #d7dce5;
     background: #fff;
     cursor: pointer;
-    font-weight: 800;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 12px;
     color: #111827;
     white-space: nowrap;
-    transition: transform 0.12s ease, background 0.14s ease, border-color 0.14s ease;
+    transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .tabBtn:hover {
@@ -290,6 +293,13 @@
     border-color: #111827;
     color: #fff;
     box-shadow: none;
+}
+
+.tabBtnActive:hover {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+    transform: none;
 }
 
 .notice {
