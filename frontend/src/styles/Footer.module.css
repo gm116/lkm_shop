@@ -39,6 +39,16 @@
     color: #226cf5;
 }
 
+.linkButton {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    font: inherit;
+    font-size: inherit;
+}
+
 .text {
     color: #4b5563;
 }

@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {BrowserRouter, Routes, Route, Navigate, useLocation} from 'react-router-dom';
 
 import HomePage from './pages/HomePage';
@@ -20,6 +20,7 @@ import StaffAnalyticsPage from './pages/StaffAnalyticsPage';
 
 import Header from './components/Header';
 import Footer from "./components/Footer";
+import FeedbackModal from './components/FeedbackModal';
 
 import {useAuth} from './store/authContext';
 
@@ -99,6 +100,8 @@ function ScrollToTop() {
 }
 
 export default function App() {
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
+
     return (
         <BrowserRouter>
             <ScrollToTop/>
@@ -165,7 +168,8 @@ export default function App() {
                     </Routes>
                 </main>
 
-                <Footer/>
+                <Footer onOpenFeedback={() => setFeedbackOpen(true)}/>
+                <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)}/>
             </div>
         </BrowserRouter>
     );

@@ -73,6 +73,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+FEEDBACK_TO_EMAIL = config('FEEDBACK_TO_EMAIL', default=(EMAIL_HOST_USER or DEFAULT_FROM_EMAIL))
 
 # Ссылка на сброс пароля действует 1 час.
 PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=3600, cast=int)

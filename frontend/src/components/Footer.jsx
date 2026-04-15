@@ -1,7 +1,7 @@
 import styles from '../styles/Footer.module.css';
 import {Link} from 'react-router-dom';
 
-export default function Footer() {
+export default function Footer({onOpenFeedback}) {
     return (
         <footer className={styles.footer}>
             <div className={styles.inner}>
@@ -10,12 +10,14 @@ export default function Footer() {
                     <Link to="/catalog" className={styles.link}>Каталог</Link>
                     <span className={styles.link}>Доставка и оплата</span>
                     <span className={styles.link}>Возврат и обмен</span>
-                    <span className={styles.link}>Помощь</span>
+                    <button type="button" className={`${styles.link} ${styles.linkButton}`} onClick={onOpenFeedback}>
+                        Обратная связь
+                    </button>
                 </div>
 
                 <div className={styles.column}>
                     <div className={styles.title}>Компания</div>
-                    <span className={styles.link}>О компании</span>
+                    <Link to="/" className={styles.link}>О компании</Link>
                     <span className={styles.link}>Пользовательское соглашение</span>
                     <span className={styles.link}>Политика конфиденциальности</span>
                 </div>
@@ -24,8 +26,8 @@ export default function Footer() {
                     <div className={styles.title}>Контакты</div>
                     <div className={styles.text}>support@shop-demo.ru</div>
                     <div className={styles.text}>+7 (999) 123-45-67</div>
-                    <div className={styles.text}>Москва, Россия</div>
-                    <div className={styles.textSmall}>Пн–Пт · 10:00–18:00</div>
+                    <div className={styles.text}>Набережные Челны, Россия</div>
+                    <div className={styles.textSmall}>Пн–Пт · 08:00–17:00</div>
                 </div>
             </div>
 
