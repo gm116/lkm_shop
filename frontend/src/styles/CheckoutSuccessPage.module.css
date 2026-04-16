@@ -1,0 +1,144 @@
+.page {
+    width: 100%;
+    min-height: calc(100vh - 180px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 40px;
+    background: #f6f7fb;
+}
+
+.card {
+    width: min(680px, 100%);
+    padding: 24px;
+    border: 1px solid #e6e8ef;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 12px 34px rgba(16, 24, 40, 0.06);
+}
+
+.title {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.1;
+    font-weight: 800;
+    color: #111827;
+}
+
+.sub {
+    margin: 8px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.infoGrid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.infoItem {
+    border: 1px solid #e6e8ef;
+    border-radius: 14px;
+    background: #f9fafb;
+    padding: 12px;
+}
+
+.infoLabel {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.infoValue {
+    margin-top: 4px;
+    font-size: 16px;
+    color: #111827;
+    font-weight: 700;
+}
+
+.error {
+    margin-top: 12px;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    background: #fff5f5;
+    color: #991b1b;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.notes {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid #e6e8ef;
+    background: #fff;
+    color: #4b5563;
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 600;
+}
+
+.notes p {
+    margin: 0;
+}
+
+.notes p + p {
+    margin-top: 6px;
+}
+
+.actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btnPrimary,
+.btnLight {
+    height: 38px;
+    border-radius: 12px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid #d7dce5;
+}
+
+.btnPrimary {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+}
+
+.btnLight {
+    background: #fff;
+    color: #111827;
+}
+
+.btnPrimary:hover,
+.btnLight:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 720px) {
+    .card {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .title {
+        font-size: 24px;
+    }
+
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -361,8 +361,42 @@ export default function CheckoutPage() {
     if (!isAuthenticated) {
         return (
             <div className={styles.page}>
-                <h1 className={styles.title}>Оформление заказа</h1>
-                <div className={styles.card}>Нужно войти, чтобы оформить заказ.</div>
+                <div className={styles.head}>
+                    <h1 className={styles.title}>Оформление заказа</h1>
+                    <p className={styles.subtitle}>
+                        Для завершения покупки войдите в аккаунт или зарегистрируйтесь.
+                    </p>
+                </div>
+                <section className={`${styles.card} ${styles.unauthCard}`}>
+                    <div className={styles.unauthIcon}><FaStore/></div>
+                    <h2 className={styles.unauthTitle}>Войдите, чтобы продолжить оформление</h2>
+                    <p className={styles.unauthText}>
+                        После входа вы сможете сохранить контактные данные, выбрать способ получения и перейти к оплате.
+                    </p>
+                    <div className={styles.unauthActions}>
+                        <button
+                            type="button"
+                            className={styles.submitBtn}
+                            onClick={() => navigate('/login', {state: {from: '/checkout'}})}
+                        >
+                            Войти
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.secondaryBtn}
+                            onClick={() => navigate('/register', {state: {from: '/checkout'}})}
+                        >
+                            Регистрация
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        className={styles.linkBtn}
+                        onClick={() => navigate('/catalog')}
+                    >
+                        Вернуться в каталог
+                    </button>
+                </section>
             </div>
         );
     }

@@ -17,6 +17,7 @@ from .permissions import IsStaffOrWarehouseGroup
 from .staff_serializers import StaffOrderStatusUpdateSerializer
 from .serializers import serialize_order
 from .services import cancel_order, OrderCancellationError
+from .notifications import send_order_status_email
 from payments.models import Payment
 
 
@@ -786,6 +787,10 @@ class StaffOrderStatusUpdateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data['status']
+        previous_status = order.status
+        if new_status == previous_status:
+            return Response(serialize_order(order, include_customer=True), status=status.HTTP_200_OK)
+
         if new_status == OrderStatus.CANCELED:
             try:
                 order = cancel_order(order)
@@ -796,7 +801,13 @@ class StaffOrderStatusUpdateView(APIView):
             order.save(update_fields=['status', 'updated_at'])
             order.refresh_from_db()
 
-        return Response(serialize_order(order, include_customer=True), status=status.HTTP_200_OK)
+        payload = serialize_order(order, include_customer=True)
+        if previous_status != order.status:
+            sent, reason = send_order_status_email(order, previous_status=previous_status)
+            if not sent and reason and reason not in {'email_missing', 'email_invalid'}:
+                payload['notification_warning'] = 'Статус обновлен, но уведомление не отправлено'
+
+        return Response(payload, status=status.HTTP_200_OK)
 
     def post(self, request, order_id):
         return self.patch(request, order_id)

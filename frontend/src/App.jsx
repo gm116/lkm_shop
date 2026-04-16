@@ -7,6 +7,7 @@ import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import CheckoutRedirectPage from "./pages/CheckoutRedirectPage";
+import CheckoutSuccessPage from './pages/CheckoutSuccessPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
@@ -130,6 +131,7 @@ export default function App() {
                         <Route path="/cart" element={<CartPage/>}/>
                         <Route path="/checkout" element={<CheckoutPage/>}/>
                         <Route path="/checkout/redirect" element={<CheckoutRedirectPage/>}/>
+                        <Route path="/checkout/success" element={<CheckoutSuccessPage/>}/>
 
                         <Route
                             path="/login"

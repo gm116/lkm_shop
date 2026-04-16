@@ -1,5 +1,6 @@
 from decimal import Decimal
 import logging
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -29,6 +30,17 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 
 def _order_description(order: Order) -> str:
     return f"Оплата заказа #{order.id}"
+
+
+def _build_return_url(base_url: str, order_id: int) -> str:
+    try:
+        parsed = urlparse(base_url)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query['order_id'] = str(order_id)
+        return urlunparse(parsed._replace(query=urlencode(query)))
+    except Exception:
+        sep = '&' if '?' in base_url else '?'
+        return f'{base_url}{sep}order_id={order_id}'
 
 
 def _sync_order_paid(order: Order):
@@ -107,7 +119,8 @@ class CreatePaymentView(APIView):
             if amount <= 0:
                 return Response({"detail": "Некорректная сумма заказа"}, status=status.HTTP_400_BAD_REQUEST)
 
-            return_url = getattr(settings, 'YOOKASSA_RETURN_URL', 'http://localhost:3000/checkout/success')
+            return_url_base = getattr(settings, 'YOOKASSA_RETURN_URL', 'http://localhost:3000/checkout/success')
+            return_url = _build_return_url(return_url_base, order.id)
 
             try:
                 r = create_payment_for_order(
