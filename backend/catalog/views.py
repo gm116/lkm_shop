@@ -2,11 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import BasePermission
-from django.db.models import Q
+from django.db.models import Q, Count, Min, Max
 from django.db.models.deletion import ProtectedError
 from django.db import transaction
+from decimal import Decimal, InvalidOperation
 
-from .models import Category, Brand, Product
+from .models import Category, Brand, Product, ProductAttribute
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
@@ -19,6 +20,10 @@ from .serializers import (
     AdminProductImportSerializer,
 )
 from .importers import import_products_from_ozon_excel
+
+MAX_FILTER_BRANDS = 200
+MAX_FILTER_ATTRIBUTE_GROUPS = 40
+MAX_FILTER_VALUES_PER_ATTRIBUTE = 18
 
 
 def collect_category_descendants(category_id):
@@ -36,6 +41,84 @@ def collect_category_descendants(category_id):
         collected.append(current)
         stack.extend(children_map.get(current, []))
     return collected
+
+
+def parse_facet_filters(raw_values):
+    parsed = {}
+    for raw in raw_values:
+        if not raw or '::' not in raw:
+            continue
+        name, value = raw.split('::', 1)
+        name = str(name or '').strip()
+        value = str(value or '').strip()
+        if not name or not value:
+            continue
+        parsed.setdefault(name, set()).add(value)
+    return parsed
+
+
+def parse_int(value):
+    if value in (None, ''):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_decimal(raw_value):
+    if raw_value in (None, ''):
+        return None
+    normalized = str(raw_value).strip().replace(',', '.')
+    try:
+        return Decimal(normalized)
+    except (TypeError, ValueError, InvalidOperation):
+        return None
+
+
+def apply_catalog_filters(qs, request, *, ignore_brand=False, ignore_facets=False):
+    category_id = parse_int(request.query_params.get('category'))
+    if request.query_params.get('category') not in (None, '') and category_id is None:
+        return None, Response({'detail': 'Некорректная категория'}, status=status.HTTP_400_BAD_REQUEST)
+    if category_id is not None:
+        root_category_id = category_id
+        category_ids = collect_category_descendants(root_category_id)
+        qs = qs.filter(category_id__in=category_ids)
+
+    if not ignore_brand:
+        brand_id = parse_int(request.query_params.get('brand'))
+        if request.query_params.get('brand') not in (None, '') and brand_id is None:
+            return None, Response({'detail': 'Некорректный бренд'}, status=status.HTTP_400_BAD_REQUEST)
+        if brand_id is not None:
+            qs = qs.filter(brand_id=brand_id)
+
+    search = str(request.query_params.get('search') or '').strip()
+    if search:
+        qs = qs.filter(name__icontains=search)
+
+    price_min = parse_decimal(request.query_params.get('price_min'))
+    price_max = parse_decimal(request.query_params.get('price_max'))
+    if request.query_params.get('price_min') not in (None, '') and price_min is None:
+        return None, Response({'detail': 'Некорректная минимальная цена'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.query_params.get('price_max') not in (None, '') and price_max is None:
+        return None, Response({'detail': 'Некорректная максимальная цена'}, status=status.HTTP_400_BAD_REQUEST)
+    if price_min is not None and price_max is not None and price_min > price_max:
+        return None, Response({'detail': 'Минимальная цена не может быть больше максимальной'}, status=status.HTTP_400_BAD_REQUEST)
+    if price_min is not None:
+        qs = qs.filter(price__gte=price_min)
+    if price_max is not None:
+        qs = qs.filter(price__lte=price_max)
+
+    if not ignore_facets:
+        facet_filters = parse_facet_filters(request.query_params.getlist('facet'))
+        for facet_name, facet_values in facet_filters.items():
+            qs = qs.filter(
+                attributes__is_filterable=True,
+                attributes__name__iexact=facet_name,
+                attributes__value__in=list(facet_values),
+            )
+
+    return qs, None
 
 
 class IsCatalogAdmin(BasePermission):
@@ -58,45 +141,140 @@ class BrandListView(APIView):
 
 class ProductListView(APIView):
     def get(self, request):
-        qs = Product.objects.filter(is_active=True).select_related('category', 'brand').prefetch_related('images')
+        qs = Product.objects.filter(is_active=True).select_related('category', 'brand').prefetch_related('images', 'attributes')
+        qs, error_response = apply_catalog_filters(qs, request)
+        if error_response is not None:
+            return error_response
 
-        category_id = request.query_params.get('category')
-        if category_id:
-            try:
-                root_category_id = int(category_id)
-            except (TypeError, ValueError):
-                return Response({'detail': 'Некорректная категория'}, status=status.HTTP_400_BAD_REQUEST)
-
-            category_ids = collect_category_descendants(root_category_id)
-            qs = qs.filter(category_id__in=category_ids)
-
-        brand_id = request.query_params.get('brand')
-        if brand_id:
-            qs = qs.filter(brand_id=brand_id)
-
-        search = request.query_params.get('search')
-        if search:
-            qs = qs.filter(name__icontains=search)
-
-        qs = qs.order_by('-id')
+        qs = qs.order_by('-id').distinct()
         return Response(ProductListSerializer(qs, many=True).data, status=status.HTTP_200_OK)
 
 
 class ProductDetailView(APIView):
     def get(self, request, pk: int):
         try:
-            obj = Product.objects.select_related('category', 'brand').prefetch_related('images').get(id=pk, is_active=True)
+            obj = Product.objects.select_related('category', 'brand').prefetch_related('images', 'attributes').get(id=pk, is_active=True)
         except Product.DoesNotExist:
             return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(ProductDetailSerializer(obj).data, status=status.HTTP_200_OK)
 
 
+class CatalogFiltersView(APIView):
+    def get(self, request):
+        selected_facet_filters = parse_facet_filters(request.query_params.getlist('facet'))
+        selected_brand_id = parse_int(request.query_params.get('brand'))
+        base_qs = Product.objects.filter(is_active=True).select_related('brand')
+        base_qs, error_response = apply_catalog_filters(base_qs, request)
+        if error_response is not None:
+            return error_response
+        brand_qs = Product.objects.filter(is_active=True).select_related('brand')
+        brand_qs, brand_error_response = apply_catalog_filters(brand_qs, request, ignore_brand=True)
+        if brand_error_response is not None:
+            return brand_error_response
+
+        base_qs = base_qs.distinct()
+        brand_qs = brand_qs.distinct()
+        products_count = base_qs.count()
+
+        price_agg = base_qs.aggregate(min_price=Min('price'), max_price=Max('price'))
+
+        brands_qs = (
+            brand_qs.filter(brand_id__isnull=False)
+            .values('brand_id', 'brand__name')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('-count', 'brand__name')
+        )
+        brands_total = brands_qs.count()
+        brands = list(brands_qs[:MAX_FILTER_BRANDS])
+
+        if selected_brand_id is not None and not any(item['brand_id'] == selected_brand_id for item in brands):
+            selected_brand_row = brands_qs.filter(brand_id=selected_brand_id).first()
+            if selected_brand_row is not None:
+                brands.append(selected_brand_row)
+                brands.sort(key=lambda item: (-item['count'], item['brand__name'] or ''))
+
+        attribute_base_qs = ProductAttribute.objects.filter(
+            product__in=base_qs,
+            is_filterable=True,
+        )
+
+        attribute_names_qs = (
+            attribute_base_qs
+            .values('name')
+            .annotate(total=Count('id', distinct=True))
+            .order_by('-total', 'name')
+        )
+        attributes_total = attribute_names_qs.count()
+        attribute_names = [item['name'] for item in attribute_names_qs[:MAX_FILTER_ATTRIBUTE_GROUPS]]
+        for selected_name in selected_facet_filters.keys():
+            if selected_name and selected_name not in attribute_names:
+                attribute_names.append(selected_name)
+
+        attributes_rows = []
+        if attribute_names:
+            attributes_rows = list(
+                attribute_base_qs.filter(name__in=attribute_names)
+                .values('name', 'value')
+                .annotate(count=Count('id', distinct=True))
+                .order_by('name', '-count', 'value')
+            )
+
+        grouped_attributes = {}
+        for row in attributes_rows:
+            name = row['name']
+            grouped_attributes.setdefault(name, []).append({
+                'value': row['value'],
+                'count': row['count'],
+            })
+
+        attributes = []
+        for name in sorted(grouped_attributes.keys(), key=lambda value: value.lower()):
+            values = grouped_attributes[name]
+            selected_values = selected_facet_filters.get(name, set())
+            values_slice = values[:MAX_FILTER_VALUES_PER_ATTRIBUTE]
+            existing_values = {item['value'] for item in values_slice}
+            if selected_values:
+                for selected_value in selected_values:
+                    if selected_value in existing_values:
+                        continue
+                    selected_match = next((item for item in values if item['value'] == selected_value), None)
+                    if selected_match is not None:
+                        values_slice.append(selected_match)
+                        existing_values.add(selected_value)
+            attributes.append({
+                'name': name,
+                'total_values': len(values),
+                'values': values_slice,
+            })
+
+        return Response({
+            'price': {
+                'min': float(price_agg['min_price']) if price_agg['min_price'] is not None else None,
+                'max': float(price_agg['max_price']) if price_agg['max_price'] is not None else None,
+            },
+            'brands': [
+                {
+                    'id': item['brand_id'],
+                    'name': item['brand__name'],
+                    'count': item['count'],
+                }
+                for item in brands
+            ],
+            'attributes': attributes,
+            'products_count': products_count,
+            'brands_total': brands_total,
+            'attributes_total': attributes_total,
+            'brands_limited': brands_total > len(brands),
+            'attributes_limited': attributes_total > len(attributes),
+        }, status=status.HTTP_200_OK)
+
+
 class AdminProductListCreateView(APIView):
     permission_classes = [IsCatalogAdmin]
 
     def get_queryset(self):
-        return Product.objects.select_related('category', 'brand').prefetch_related('images').order_by('-id')
+        return Product.objects.select_related('category', 'brand').prefetch_related('images', 'attributes').order_by('-id')
 
     def get(self, request):
         qs = self.get_queryset()
@@ -146,7 +324,7 @@ class AdminProductDetailView(APIView):
     permission_classes = [IsCatalogAdmin]
 
     def get_queryset(self):
-        return Product.objects.select_related('category', 'brand').prefetch_related('images')
+        return Product.objects.select_related('category', 'brand').prefetch_related('images', 'attributes')
 
     def patch(self, request, pk: int):
         try:

@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.utils.text import slugify
 from rest_framework import serializers
-from .models import Category, Brand, Product, ProductImage
+from .models import Category, Brand, Product, ProductImage, ProductAttribute
 
 
 def build_unique_category_slug(name, instance=None):
@@ -49,10 +49,17 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'slug', 'is_active')
 
 
+class ProductAttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttribute
+        fields = ('name', 'value', 'is_filterable', 'sort_order')
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     brand = BrandSerializer()
     image = serializers.SerializerMethodField()
+    characteristics = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -66,17 +73,22 @@ class ProductListSerializer(serializers.ModelSerializer):
             'category',
             'brand',
             'image',
+            'characteristics',
         )
 
     def get_image(self, obj):
         img = obj.images.order_by('sort_order', 'id').first()
         return img.image_url if img else None
 
+    def get_characteristics(self, obj):
+        return ProductAttributeSerializer(obj.attributes.all(), many=True).data
+
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     brand = BrandSerializer()
     images = serializers.SerializerMethodField()
+    characteristics = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -92,15 +104,37 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'category',
             'brand',
             'images',
+            'characteristics',
         )
 
     def get_images(self, obj):
         return [img.image_url for img in obj.images.order_by('sort_order', 'id')]
 
+    def get_characteristics(self, obj):
+        return ProductAttributeSerializer(obj.attributes.all(), many=True).data
+
 
 class AdminProductImageInSerializer(serializers.Serializer):
     image_url = serializers.URLField()
     sort_order = serializers.IntegerField(required=False, min_value=0, default=0)
+
+
+class AdminProductAttributeInSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    value = serializers.CharField(max_length=255)
+    is_filterable = serializers.BooleanField(required=False, default=True)
+    sort_order = serializers.IntegerField(required=False, min_value=0, default=0)
+
+    def validate(self, attrs):
+        attrs['name'] = str(attrs.get('name') or '').strip()
+        attrs['value'] = str(attrs.get('value') or '').strip()
+
+        if not attrs['name']:
+            raise serializers.ValidationError({'name': 'Название характеристики обязательно'})
+        if not attrs['value']:
+            raise serializers.ValidationError({'value': 'Значение характеристики обязательно'})
+
+        return attrs
 
 
 class AdminProductCreateSerializer(serializers.Serializer):
@@ -114,6 +148,7 @@ class AdminProductCreateSerializer(serializers.Serializer):
     stock = serializers.IntegerField(min_value=0)
     is_active = serializers.BooleanField(required=False, default=True)
     images = AdminProductImageInSerializer(many=True, required=False)
+    characteristics = AdminProductAttributeInSerializer(many=True, required=False)
 
     def validate_category_id(self, value):
         if not Category.objects.filter(id=value).exists():
@@ -163,10 +198,22 @@ class AdminProductCreateSerializer(serializers.Serializer):
         attrs['name'] = name
         attrs['slug'] = slug
         attrs['description'] = (attrs.get('description') or '').strip()
+
+        attributes = attrs.get('characteristics') or []
+        unique_keys = set()
+        normalized_attributes = []
+        for item in attributes:
+            unique_key = (item['name'].lower(), item['value'].lower())
+            if unique_key in unique_keys:
+                continue
+            unique_keys.add(unique_key)
+            normalized_attributes.append(item)
+        attrs['characteristics'] = normalized_attributes
         return attrs
 
     def create(self, validated_data):
         images_data = validated_data.pop('images', [])
+        attributes_data = validated_data.pop('characteristics', [])
         category_id = validated_data.pop('category_id')
         brand_id = validated_data.pop('brand_id', None)
 
@@ -187,10 +234,23 @@ class AdminProductCreateSerializer(serializers.Serializer):
         if image_objects:
             ProductImage.objects.bulk_create(image_objects)
 
+        if attributes_data:
+            ProductAttribute.objects.bulk_create([
+                ProductAttribute(
+                    product=product,
+                    name=item['name'],
+                    value=item['value'],
+                    is_filterable=item.get('is_filterable', True),
+                    sort_order=item.get('sort_order', 0) or 0,
+                )
+                for item in attributes_data
+            ])
+
         return product
 
     def update(self, instance, validated_data):
         images_data = validated_data.pop('images', None)
+        attributes_data = validated_data.pop('characteristics', None)
         category_id = validated_data.pop('category_id')
         brand_id = validated_data.pop('brand_id', None)
 
@@ -213,6 +273,20 @@ class AdminProductCreateSerializer(serializers.Serializer):
             if image_objects:
                 ProductImage.objects.bulk_create(image_objects)
 
+        if attributes_data is not None:
+            instance.attributes.all().delete()
+            if attributes_data:
+                ProductAttribute.objects.bulk_create([
+                    ProductAttribute(
+                        product=instance,
+                        name=item['name'],
+                        value=item['value'],
+                        is_filterable=item.get('is_filterable', True),
+                        sort_order=item.get('sort_order', 0) or 0,
+                    )
+                    for item in attributes_data
+                ])
+
         return instance
 
 
@@ -220,6 +294,7 @@ class AdminProductOutSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     brand = BrandSerializer(allow_null=True)
     images = serializers.SerializerMethodField()
+    characteristics = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -235,6 +310,7 @@ class AdminProductOutSerializer(serializers.ModelSerializer):
             'category',
             'brand',
             'images',
+            'characteristics',
             'created_at',
             'updated_at',
         )
@@ -247,6 +323,17 @@ class AdminProductOutSerializer(serializers.ModelSerializer):
                 'sort_order': image.sort_order,
             }
             for image in obj.images.order_by('sort_order', 'id')
+        ]
+
+    def get_characteristics(self, obj):
+        return [
+            {
+                'name': item.name,
+                'value': item.value,
+                'is_filterable': item.is_filterable,
+                'sort_order': item.sort_order,
+            }
+            for item in obj.attributes.order_by('sort_order', 'name', 'id')
         ]
 
 

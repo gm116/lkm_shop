@@ -10,7 +10,7 @@ function formatMoney(v) {
 export default function ProductCard({product}) {
     const {cart, addToCart, decreaseCount, pendingIds} = useCart();
 
-    const item = cart.find(i => i.id === product.id);
+    const item = cart.find((i) => i.id === product.id);
     const count = item ? item.count : 0;
 
     const img = product?.image_url || product?.image || '';
@@ -27,7 +27,7 @@ export default function ProductCard({product}) {
     const canInc = stockNum == null ? true : count < stockNum;
 
     return (
-        <div className={styles.card}>
+        <article className={styles.card}>
             <div className={styles.media}>
                 <Link to={`/product/${product.id}`} className={styles.mediaLink}>
                     {img ? (
@@ -37,7 +37,7 @@ export default function ProductCard({product}) {
                     )}
                 </Link>
 
-                {!inStock && <div className={styles.badgeOut}>Нет в наличии</div>}
+                {!inStock ? <div className={styles.badgeOut}>Нет в наличии</div> : null}
             </div>
 
             <Link to={`/product/${product.id}`} className={styles.cardName} title={product.name}>
@@ -53,41 +53,43 @@ export default function ProductCard({product}) {
                 ) : null}
             </div>
 
-            <div className={styles.actionArea}>
-                {count === 0 ? (
-                    <button
-                        className={styles.cartBtn}
-                        onClick={() => addToCart(safeProductForCart)}
-                        type="button"
-                        disabled={isPending || !inStock}
-                    >
-                        В корзину
-                    </button>
-                ) : (
-                    <div className={styles.countBlock}>
+            <div className={styles.cardFooter}>
+                <div className={styles.actionArea}>
+                    {count === 0 ? (
                         <button
-                            className={styles.countBtn}
-                            onClick={() => decreaseCount(product.id)}
-                            type="button"
-                            disabled={isPending}
-                        >
-                            −
-                        </button>
-
-                        <span className={styles.countNum}>{count}</span>
-
-                        <button
-                            className={styles.countBtn}
+                            className={styles.cartBtn}
                             onClick={() => addToCart(safeProductForCart)}
                             type="button"
-                            disabled={isPending || !inStock || !canInc}
-                            title={!canInc ? 'Достигнут лимит остатка' : 'Добавить'}
+                            disabled={isPending || !inStock}
                         >
-                            +
+                            В корзину
                         </button>
-                    </div>
-                )}
+                    ) : (
+                        <div className={styles.countBlock}>
+                            <button
+                                className={styles.countBtn}
+                                onClick={() => decreaseCount(product.id)}
+                                type="button"
+                                disabled={isPending}
+                            >
+                                −
+                            </button>
+
+                            <span className={styles.countNum}>{count}</span>
+
+                            <button
+                                className={styles.countBtn}
+                                onClick={() => addToCart(safeProductForCart)}
+                                type="button"
+                                disabled={isPending || !inStock || !canInc}
+                                title={!canInc ? 'Достигнут лимит остатка' : 'Добавить'}
+                            >
+                                +
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </article>
     );
 }

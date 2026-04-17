@@ -6,7 +6,7 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 from openpyxl import load_workbook
 
-from .models import Brand, Category, Product, ProductImage
+from .models import Brand, Category, Product, ProductImage, ProductAttribute
 from .serializers import build_unique_category_slug
 
 
@@ -21,6 +21,7 @@ HEADER_EXTRA_IMAGES = 'Ссылки на дополнительные фото'
 HEADER_BRAND = 'Бренд*'
 HEADER_DESCRIPTION = 'Аннотация'
 HEADER_TYPE = 'Тип*'
+ATTRIBUTE_HEADER_PREFIXES = ('Характеристика:', 'Атрибут:', 'Параметр:')
 
 
 def _normalize_header(value):
@@ -138,6 +139,18 @@ def _extract_columns(sheet):
     return headers
 
 
+def _extract_attribute_columns(headers):
+    attribute_columns = []
+    for header_name, col_idx in headers.items():
+        for prefix in ATTRIBUTE_HEADER_PREFIXES:
+            if header_name.lower().startswith(prefix.lower()):
+                attr_name = header_name[len(prefix):].strip()
+                if attr_name:
+                    attribute_columns.append((attr_name, col_idx))
+                break
+    return attribute_columns
+
+
 def _cell(sheet, row_idx, headers, name):
     col_idx = headers.get(name)
     if not col_idx:
@@ -145,10 +158,26 @@ def _cell(sheet, row_idx, headers, name):
     return sheet.cell(row=row_idx, column=col_idx).value
 
 
+def _collect_attributes(sheet, row_idx, attribute_columns):
+    attributes = []
+    seen = set()
+    for name, col_idx in attribute_columns:
+        value = str(sheet.cell(row=row_idx, column=col_idx).value or '').strip()
+        if not value:
+            continue
+        key = (name.lower(), value.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        attributes.append({'name': name, 'value': value})
+    return attributes
+
+
 def import_products_from_ozon_excel(uploaded_file, *, stock_default=0, is_active=True):
     workbook = load_workbook(uploaded_file, data_only=True)
     sheet = _extract_sheet(workbook)
     headers = _extract_columns(sheet)
+    attribute_columns = _extract_attribute_columns(headers)
 
     rows = []
     created = 0
@@ -193,6 +222,7 @@ def import_products_from_ozon_excel(uploaded_file, *, stock_default=0, is_active
             category = _resolve_category(type_name)
             main_image = str(_cell(sheet, row_idx, headers, HEADER_MAIN_IMAGE) or '').strip()
             extra_images = _split_image_urls(_cell(sheet, row_idx, headers, HEADER_EXTRA_IMAGES))
+            attributes = _collect_attributes(sheet, row_idx, attribute_columns)
 
             image_urls = []
             if main_image:
@@ -239,6 +269,18 @@ def import_products_from_ozon_excel(uploaded_file, *, stock_default=0, is_active
                     ProductImage.objects.bulk_create([
                         ProductImage(product=product, image_url=url, sort_order=index)
                         for index, url in enumerate(image_urls)
+                    ])
+
+                if attributes:
+                    ProductAttribute.objects.bulk_create([
+                        ProductAttribute(
+                            product=product,
+                            name=item['name'],
+                            value=item['value'],
+                            is_filterable=True,
+                            sort_order=index,
+                        )
+                        for index, item in enumerate(attributes)
                     ])
 
             created += 1

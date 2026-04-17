@@ -72,6 +72,29 @@ class Product(models.Model):
         return self.name
 
 
+class ProductAttribute(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='attributes')
+    name = models.CharField(max_length=120)
+    value = models.CharField(max_length=255)
+    is_filterable = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name', 'value', 'id']
+        verbose_name = 'Product attribute'
+        verbose_name_plural = 'Product attributes'
+        constraints = [
+            models.UniqueConstraint(fields=['product', 'name', 'value'], name='uniq_product_attribute'),
+        ]
+        indexes = [
+            models.Index(fields=['product', 'is_filterable']),
+            models.Index(fields=['name', 'value', 'is_filterable']),
+        ]
+
+    def __str__(self):
+        return f'{self.product_id}:{self.name}={self.value}'
+
+
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image_url = models.URLField()

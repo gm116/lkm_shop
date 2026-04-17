@@ -2,105 +2,17 @@
     max-width: 1240px;
     width: 100%;
     margin: 0 auto;
-    padding: 28px 12px 36px 12px;
+    padding: 24px 12px 34px;
     min-height: 100vh;
     box-sizing: border-box;
 }
 
-.catalogTitle {
-    font-size: 2.15rem;
-    font-weight: 800;
-    margin-bottom: 0;
-    text-align: left;
-    letter-spacing: -0.02em;
-    color: #111827;
-}
-
-.topRow {
-    display: flex;
-    width: 100%;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 32px;
-    margin-bottom: 28px;
-}
-
-.sidebarBlock {
-    width: 270px;
-    min-width: 270px;
-    flex-shrink: 0;
-    align-self: flex-start;
-}
-
-.mainBlock {
-    min-width: 0;
-    flex: 1;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-}
-
-.gridFrame {
-    position: relative;
-    width: 100%;
-    min-height: 520px;
-}
-
-.productsGrid {
-    width: 100%;
-    min-height: 520px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 22px;
-    align-content: start;
-}
-
-.emptyCard {
-    grid-column: 1 / -1;
-    background: #f7f7fa;
-    border-radius: 14px;
-    min-height: 240px;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #aaa;
-    font-size: 19px;
-    margin-top: 0;
-    border: 1px solid #eceef5;
-    box-sizing: border-box;
-}
-
-.statusCard {
-    grid-column: 1 / -1;
-    min-height: 72px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.notFound {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: #6b7280;
-    font-size: 18px;
-    padding: 0 12px;
-    font-weight: 650;
-}
-
-/* Новая шапка каталога */
 .headerRow {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 20px;
-    padding: 0 2px;
+    margin-bottom: 14px;
 }
 
 .catalogTitleBlock {
@@ -109,17 +21,24 @@
     gap: 6px;
 }
 
+.catalogTitle {
+    font-size: 1.92rem;
+    font-weight: 760;
+    margin: 0;
+    letter-spacing: -0.02em;
+    color: #111827;
+}
+
 .catalogSub {
+    margin: 0;
     font-size: 13px;
     color: #667085;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
     justify-content: flex-end;
 }
 
@@ -135,56 +54,255 @@
     background: #ffffff;
     border: 1px solid #e4e8f1;
     color: #334155;
-    padding: 8px 12px;
+    padding: 7px 11px;
     border-radius: 999px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 650;
     line-height: 1;
-    max-width: 360px;
+    max-width: 320px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     box-shadow: 0 1px 8px rgba(16, 24, 40, 0.04);
 }
 
-.sortWrap {
+.quickCategories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.quickCategoryBtn {
+    border: 1px solid #dbe3f0;
+    background: #fff;
+    color: #334155;
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.quickCategoryBtn:hover {
+    border-color: #bfd0eb;
+    background: #f4f8ff;
+}
+
+.quickCategoryBtnActive {
+    border-color: #8fb0df;
+    color: #194b99;
+    background: #eaf2ff;
+}
+
+.topRow {
+    display: grid;
+    width: 100%;
+    align-items: start;
+    grid-template-columns: 278px minmax(0, 1fr);
+    gap: 16px;
+}
+
+.sidebarBlock {
+    width: 100%;
+}
+
+.mainBlock {
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.controlLabel {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    background: #ffffff;
-    border: 1px solid #e7e9f2;
-    border-radius: 12px;
-    padding: 8px 10px;
-    box-shadow: 0 1px 10px rgba(16, 24, 40, 0.04);
-}
-
-.sortLabel {
+    gap: 8px;
     font-size: 12px;
-    color: #6b7280;
-    font-weight: 700;
+    font-weight: 600;
+    color: #4b5563;
 }
 
-.sortSelect {
-    border: none;
+.controlSelect {
+    border: 1px solid #d9e0ed;
+    background: #fff;
+    border-radius: 10px;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0f172a;
     outline: none;
-    background: transparent;
-    font-size: 13px;
-    font-weight: 700;
-    color: #111827;
+}
+
+.controlSelect:focus {
+    border-color: #9fb8e6;
+    box-shadow: 0 0 0 3px rgba(79, 131, 220, 0.12);
+}
+
+.clearBtn {
+    height: 34px;
+    border: 1px solid #c9d6ee;
+    background: #fff;
+    color: #2b66b0;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 0 12px;
     cursor: pointer;
 }
 
-/* Скелетоны */
+.clearBtn:hover {
+    background: #f3f7ff;
+}
+
+.gridFrame {
+    position: relative;
+    width: 100%;
+    min-height: 520px;
+}
+
+.productsGrid {
+    width: 100%;
+    min-height: 420px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    align-content: start;
+}
+
+.emptyCard {
+    background: #f7f9fd;
+    border-radius: 16px;
+    min-height: 220px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    color: #667085;
+    font-size: 14px;
+    margin-top: 8px;
+    border: 1px solid #e7ebf4;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 16px;
+}
+
+.emptyCardTop {
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.statusCard {
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notFound {
+    color: #475467;
+    font-size: 15px;
+    font-weight: 650;
+}
+
+.emptyHelp {
+    font-size: 13px;
+    color: #667085;
+    max-width: 540px;
+}
+
+.emptyActionBtn {
+    height: 36px;
+    border: 1px solid #c9d6ee;
+    background: #fff;
+    color: #2b66b0;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.emptyActionBtn:hover {
+    background: #f3f7ff;
+}
+
+.paginationBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    border: 1px solid #e5e9f3;
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 12px;
+}
+
+.paginationLeft,
+.paginationRight {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.paginationLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
+}
+
+.paginationControls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pageBtn {
+    height: 34px;
+    border: 1px solid #cbd7ed;
+    background: #fff;
+    color: #2b66b0;
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.pageBtn:hover:not(:disabled) {
+    background: #f3f7ff;
+}
+
+.pageBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pageIndicator {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    min-width: 120px;
+    text-align: center;
+}
+
 .skeletonCard {
     background: #fff;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid #eceef5;
     padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    box-shadow: 0 1px 12px rgba(16, 24, 40, 0.04);
-    min-width: 0;
+    gap: 9px;
+    box-shadow: 0 1px 10px rgba(16, 24, 40, 0.04);
 }
 
 .skeletonImg {
@@ -211,7 +329,7 @@
 }
 
 .skeletonBtn {
-    height: 38px;
+    height: 36px;
     margin-top: auto;
 }
 
@@ -224,84 +342,60 @@
     }
 }
 
-@media (max-width: 1100px) {
-    .productsGrid {
-        grid-template-columns: repeat(2, 1fr);
+@media (max-width: 1120px) {
+    .topRow {
+        grid-template-columns: 244px minmax(0, 1fr);
     }
 
-    .sidebarBlock {
-        width: 220px;
-        min-width: 220px;
+    .productsGrid {
+        grid-template-columns: repeat(auto-fill, minmax(206px, 1fr));
     }
+
 }
 
-@media (max-width: 700px) {
-    .topRow {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .sidebarBlock {
-        width: 100%;
-        min-width: 0;
-        max-width: none;
-        margin-bottom: 12px;
-    }
-
-    .productsGrid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 13px;
-    }
-
-    .gridFrame,
-    .productsGrid {
-        min-height: 320px;
-    }
-
+@media (max-width: 900px) {
     .catalogWrapper {
-        padding: 12px 8px 20px 8px;
-    }
-
-    .emptyCard {
-        min-height: 140px;
+        padding: 16px 10px 22px;
     }
 
     .headerRow {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .toolbar {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .sortWrap {
-        width: 100%;
-        justify-content: space-between;
-    }
-}
-
-.catalogHead {
-    display: flex;
-    width: 100%;
-    align-items: flex-end;
-    justify-content: flex-start;
-    gap: 14px;
-    margin-bottom: 22px;
-}
-
-.catalogTools {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-@media (max-width: 700px) {
-    .catalogHead {
-        flex-direction: column;
-        align-items: flex-start;
         gap: 10px;
-        margin-bottom: 12px;
+    }
+
+    .toolbar,
+    .chips {
+        justify-content: flex-start;
+    }
+
+    .topRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .catalogTitle {
+        font-size: 1.62rem;
+    }
+
+    .productsGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        min-height: 300px;
+    }
+
+    .paginationBar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .paginationLeft,
+    .paginationRight {
+        justify-content: space-between;
+    }
+
+    .paginationControls {
+        justify-content: space-between;
     }
 }

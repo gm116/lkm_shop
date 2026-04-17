@@ -16,6 +16,7 @@ const EMPTY_FORM = {
     stock: '',
     is_active: true,
     images_text: '',
+    characteristics_text: '',
 };
 
 const EMPTY_CATEGORY_FORM = {
@@ -52,6 +53,54 @@ function normalizeImageLines(text) {
         .split('\n')
         .map((line, index) => ({image_url: line.trim(), sort_order: index}))
         .filter((item) => item.image_url);
+}
+
+function normalizeCharacteristicLines(text) {
+    const lines = String(text || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    const seen = new Set();
+    const items = [];
+
+    lines.forEach((line, index) => {
+        const separatorMatch = line.match(/\s*[:=-]\s*/);
+        if (!separatorMatch) return;
+
+        const separatorIndex = separatorMatch.index ?? -1;
+        if (separatorIndex <= 0) return;
+
+        const name = line.slice(0, separatorIndex).trim();
+        const value = line.slice(separatorIndex + separatorMatch[0].length).trim();
+        if (!name || !value) return;
+
+        const key = `${name.toLowerCase()}::${value.toLowerCase()}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        items.push({
+            name,
+            value,
+            is_filterable: true,
+            sort_order: index,
+        });
+    });
+
+    return items;
+}
+
+function characteristicsToText(characteristics) {
+    if (!Array.isArray(characteristics)) return '';
+    return characteristics
+        .map((item) => {
+            const name = String(item?.name || '').trim();
+            const value = String(item?.value || '').trim();
+            if (!name || !value) return '';
+            return `${name}: ${value}`;
+        })
+        .filter(Boolean)
+        .join('\n');
 }
 
 function sanitizeIntegerInput(value) {
@@ -464,6 +513,7 @@ export default function AdminDashboard() {
                 stock: Number(form.stock),
                 is_active: !!form.is_active,
                 images: normalizeImageLines(form.images_text),
+                characteristics: normalizeCharacteristicLines(form.characteristics_text),
             };
 
             const isEditing = !!editingProductId;
@@ -635,6 +685,7 @@ export default function AdminDashboard() {
             stock: product.stock ?? '',
             is_active: !!product.is_active,
             images_text: Array.isArray(product.images) ? product.images.map((image) => image.image_url).join('\n') : '',
+            characteristics_text: characteristicsToText(product.characteristics),
         });
         window.scrollTo({top: 0, behavior: 'smooth'});
     };
@@ -1127,6 +1178,18 @@ export default function AdminDashboard() {
                                             <label className={styles.field}>
                                                 <span>Описание</span>
                                                 <textarea className={controlClass(styles)} data-invalid="false" rows="5" value={form.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Коротко опишите товар, преимущества и применение"/>
+                                            </label>
+
+                                            <label className={styles.field}>
+                                                <span>Характеристики</span>
+                                                <textarea
+                                                    rows="5"
+                                                    className={controlClass(styles)}
+                                                    data-invalid="false"
+                                                    value={form.characteristics_text}
+                                                    onChange={(e) => handleChange('characteristics_text', e.target.value)}
+                                                    placeholder={'По одной на строку: Объем: 1 л\nТип: Лак\nСтепень блеска: Глянцевый'}
+                                                />
                                             </label>
 
                                             <label className={styles.field}>
