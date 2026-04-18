@@ -300,7 +300,7 @@ export default function Sidebar({
                 <div className={styles.title}>Характеристики</div>
                 {characteristics.length === 0 ? (
                     <div className={styles.placeholderText}>
-                        Фильтры появятся автоматически, когда в карточках товаров будут заполнены характеристики.
+                        Фильтры по характеристикам сейчас недоступны.
                     </div>
                 ) : (
                     <div className={styles.facetsWrap}>

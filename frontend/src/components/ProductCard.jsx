@@ -1,6 +1,7 @@
 import styles from '../styles/ProductCard.module.css';
 import {Link} from 'react-router-dom';
 import {useCart} from '../store/cartContext';
+import productPlaceholder from '../assets/product-placeholder.svg';
 
 function formatMoney(v) {
     const n = Number(v || 0);
@@ -13,12 +14,12 @@ export default function ProductCard({product}) {
     const item = cart.find((i) => i.id === product.id);
     const count = item ? item.count : 0;
 
-    const img = product?.image_url || product?.image || '';
+    const img = product?.image_url || product?.image || productPlaceholder;
     const inStock = product?.stock == null ? true : Number(product.stock) > 0;
 
     const safeProductForCart = {
         ...product,
-        image_url: product?.image_url || product?.image || '',
+        image_url: product?.image_url || product?.image || productPlaceholder,
     };
 
     const isPending = pendingIds?.has(product.id);
@@ -30,11 +31,15 @@ export default function ProductCard({product}) {
         <article className={styles.card}>
             <div className={styles.media}>
                 <Link to={`/product/${product.id}`} className={styles.mediaLink}>
-                    {img ? (
-                        <img className={styles.cardImg} src={img} alt={product.name}/>
-                    ) : (
-                        <div className={styles.cardImgPh}/>
-                    )}
+                    <img
+                        className={styles.cardImg}
+                        src={img}
+                        alt={product.name}
+                        onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = productPlaceholder;
+                        }}
+                    />
                 </Link>
 
                 {!inStock ? <div className={styles.badgeOut}>Нет в наличии</div> : null}

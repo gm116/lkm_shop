@@ -297,7 +297,8 @@
 .field input,
 .field select,
 .field textarea,
-.searchInput {
+.searchInput,
+.control {
     width: 100%;
     border: 1px solid #d7dce5;
     border-radius: 12px;
@@ -314,6 +315,10 @@
 
 .control {
     width: 100%;
+    background-image: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
 .field input[type='number']::-webkit-outer-spin-button,
@@ -369,10 +374,146 @@
     resize: vertical;
 }
 
+.fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 12px 12px 10px;
+    border: 1px solid #e8edf5;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.fieldGroupHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.fieldGroupTitle {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.fieldGroupHint {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #7b8699;
+    font-weight: 500;
+}
+
+.inlineHint {
+    margin: 0;
+    padding: 7px 2px 2px;
+    font-size: 12px;
+    color: #7b8699;
+    font-weight: 500;
+}
+
+.attributeChips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.attributeChip {
+    border: 1px solid #d7dce5;
+    background: #fff;
+    color: #394150;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.attributeRows,
+.imageRows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.attributeRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+    gap: 7px;
+    align-items: center;
+}
+
+.attributeToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 9px;
+    border: 1px solid #dde5f1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.attributeToggle span {
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 600;
+    color: #475467;
+    white-space: nowrap;
+}
+
+.imageRow {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: center;
+}
+
+.imagePreview {
+    width: 64px;
+    height: 84px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #dfe6f2;
+    background: #fff;
+}
+
+.imagePreview img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.inlineBtn {
+    white-space: nowrap;
+}
+
+.secondaryBtn.inlineBtn,
+.dangerBtn.inlineBtn {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.1;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.fieldGroupHead .inlineBtn {
+    align-self: center;
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus,
-.searchInput:focus {
+.searchInput:focus,
+.control:focus {
     border-color: #aeb9ca;
     box-shadow: 0 0 0 4px rgba(31, 79, 191, 0.08);
 }
@@ -385,7 +526,8 @@
 
 .field input::placeholder,
 .field textarea::placeholder,
-.searchInput::placeholder {
+.searchInput::placeholder,
+.control::placeholder {
     color: rgba(107, 114, 128, 0.68);
     font-size: inherit;
     font-weight: 500;
@@ -1174,6 +1316,21 @@
 
     .productPrice {
         text-align: left;
+    }
+
+    .fieldGroupHead {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .attributeRow,
+    .imageRow {
+        grid-template-columns: 1fr;
+    }
+
+    .imagePreview {
+        width: 72px;
+        height: 96px;
     }
 
     .productSide,

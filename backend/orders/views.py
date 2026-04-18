@@ -57,7 +57,7 @@ class OrderCreateFromCartView(APIView):
 
                 customer_name=data['customer_name'],
                 customer_phone=data['customer_phone'],
-                customer_email=data.get('customer_email', ''),
+                customer_email=data['customer_email'],
 
                 delivery_type=data['delivery_type'],
                 delivery_city=data.get('delivery_city', ''),

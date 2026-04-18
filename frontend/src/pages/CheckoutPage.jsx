@@ -7,6 +7,7 @@ import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
 
 import styles from '../styles/CheckoutPage.module.css';
+import productPlaceholder from '../assets/product-placeholder.svg';
 
 const DELIVERY_TYPES = {
     STORE_PICKUP: 'store_pickup',
@@ -76,7 +77,6 @@ function phoneIsValid(value) {
 
 function emailIsValid(value) {
     const text = String(value || '').trim();
-    if (!text) return true;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
 }
 
@@ -93,7 +93,9 @@ function buildFieldErrors({customerName, customerPhone, customerEmail, deliveryT
         errors.customerPhone = 'Неверный формат телефона';
     }
 
-    if (!emailIsValid(customerEmail)) {
+    if (!String(customerEmail || '').trim()) {
+        errors.customerEmail = 'Укажите email';
+    } else if (!emailIsValid(customerEmail)) {
         errors.customerEmail = 'Введите корректный email';
     }
 
@@ -461,13 +463,17 @@ export default function CheckoutPage() {
                                     </div>
 
                                     <div className={styles.fieldBlock}>
-                                        <label className={styles.label}>Email</label>
+                                        <label className={styles.label}>
+                                            Email <span className={styles.reqStar}>*</span>
+                                        </label>
                                         <input
                                             className={`${styles.input} ${submitAttempted && fieldErrors.customerEmail ? styles.inputError : ''}`}
                                             value={customerEmail}
                                             onChange={(e) => setCustomerEmail(e.target.value)}
                                             placeholder="example@mail.ru"
                                             inputMode="email"
+                                            type="email"
+                                            autoComplete="email"
                                         />
                                         <div className={styles.fieldNote}>
                                             {submitAttempted && fieldErrors.customerEmail ? fieldErrors.customerEmail : ''}
@@ -588,16 +594,16 @@ export default function CheckoutPage() {
                                     return (
                                         <div className={styles.itemCard} key={item.id}>
                                             <div className={styles.itemImageWrap}>
-                                                {item.image_url ? (
-                                                    <img
-                                                        src={item.image_url}
-                                                        alt={item.name}
-                                                        className={styles.itemImage}
-                                                        loading="lazy"
-                                                    />
-                                                ) : (
-                                                    <div className={styles.itemImagePlaceholder}>Фото</div>
-                                                )}
+                                                <img
+                                                    src={item.image_url || productPlaceholder}
+                                                    alt={item.name}
+                                                    className={styles.itemImage}
+                                                    loading="lazy"
+                                                    onError={(event) => {
+                                                        event.currentTarget.onerror = null;
+                                                        event.currentTarget.src = productPlaceholder;
+                                                    }}
+                                                />
                                             </div>
                                             <div className={styles.itemInfo}>
                                                 <div className={styles.itemName}>{item.name}</div>

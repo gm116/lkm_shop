@@ -4,6 +4,30 @@ import {FaChevronDown} from 'react-icons/fa';
 import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
 import styles from '../styles/AdminDashboard.module.css';
+import productPlaceholder from '../assets/product-placeholder.svg';
+
+const EMPTY_IMAGE_ROW = {image_url: ''};
+const EMPTY_CHARACTERISTIC_ROW = {name: '', value: '', is_filterable: true};
+
+function createRowId(prefix) {
+    return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+}
+
+function createImageRow(data = EMPTY_IMAGE_ROW) {
+    return {
+        row_id: createRowId('img'),
+        image_url: String(data?.image_url || '').trim(),
+    };
+}
+
+function createCharacteristicRow(data = EMPTY_CHARACTERISTIC_ROW) {
+    return {
+        row_id: createRowId('attr'),
+        name: String(data?.name || '').trim(),
+        value: String(data?.value || '').trim(),
+        is_filterable: data?.is_filterable !== false,
+    };
+}
 
 const EMPTY_FORM = {
     name: '',
@@ -15,9 +39,17 @@ const EMPTY_FORM = {
     price: '',
     stock: '',
     is_active: true,
-    images_text: '',
-    characteristics_text: '',
+    images: [createImageRow()],
+    characteristics: [],
 };
+
+function createEmptyProductForm() {
+    return {
+        ...EMPTY_FORM,
+        images: [createImageRow()],
+        characteristics: [],
+    };
+}
 
 const EMPTY_CATEGORY_FORM = {
     name: '',
@@ -48,59 +80,44 @@ async function readJsonSafe(res) {
     }
 }
 
-function normalizeImageLines(text) {
-    return String(text || '')
-        .split('\n')
-        .map((line, index) => ({image_url: line.trim(), sort_order: index}))
+function normalizeImageRows(rows) {
+    const items = Array.isArray(rows) ? rows : [];
+    return items
+        .map((row, index) => ({
+            image_url: String(row?.image_url || '').trim(),
+            sort_order: index,
+        }))
         .filter((item) => item.image_url);
 }
 
-function normalizeCharacteristicLines(text) {
-    const lines = String(text || '')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean);
-
+function normalizeCharacteristicRows(rows, canonicalNamesMap = new Map()) {
+    const items = Array.isArray(rows) ? rows : [];
     const seen = new Set();
-    const items = [];
+    const normalized = [];
 
-    lines.forEach((line, index) => {
-        const separatorMatch = line.match(/\s*[:=-]\s*/);
-        if (!separatorMatch) return;
+    items.forEach((row, index) => {
+        const rawName = String(row?.name || '').trim();
+        const rawValue = String(row?.value || '').trim();
+        if (!rawName || !rawValue) return;
 
-        const separatorIndex = separatorMatch.index ?? -1;
-        if (separatorIndex <= 0) return;
-
-        const name = line.slice(0, separatorIndex).trim();
-        const value = line.slice(separatorIndex + separatorMatch[0].length).trim();
+        const canonicalName = canonicalNamesMap.get(rawName.toLowerCase()) || rawName;
+        const name = canonicalName;
+        const value = rawValue;
         if (!name || !value) return;
 
         const key = `${name.toLowerCase()}::${value.toLowerCase()}`;
         if (seen.has(key)) return;
         seen.add(key);
 
-        items.push({
+        normalized.push({
             name,
             value,
-            is_filterable: true,
+            is_filterable: row?.is_filterable !== false,
             sort_order: index,
         });
     });
 
-    return items;
-}
-
-function characteristicsToText(characteristics) {
-    if (!Array.isArray(characteristics)) return '';
-    return characteristics
-        .map((item) => {
-            const name = String(item?.name || '').trim();
-            const value = String(item?.value || '').trim();
-            if (!name || !value) return '';
-            return `${name}: ${value}`;
-        })
-        .filter(Boolean)
-        .join('\n');
+    return normalized;
 }
 
 function sanitizeIntegerInput(value) {
@@ -166,8 +183,8 @@ function formatDateTime(value) {
 }
 
 function getProductPreview(product) {
-    if (!Array.isArray(product?.images) || product.images.length === 0) return '';
-    return product.images[0]?.image_url || '';
+    if (!Array.isArray(product?.images) || product.images.length === 0) return productPlaceholder;
+    return product.images[0]?.image_url || productPlaceholder;
 }
 
 const ORDER_STATUS_LABELS = {
@@ -204,6 +221,8 @@ export default function AdminDashboard() {
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [products, setProducts] = useState([]);
+    const [attributeMetaLoading, setAttributeMetaLoading] = useState(false);
+    const [attributeMeta, setAttributeMeta] = useState([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({count: 0, page: 1, page_size: 10, total_pages: 1});
@@ -230,7 +249,7 @@ export default function AdminDashboard() {
         canceled_count: 0,
     });
 
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [form, setForm] = useState(createEmptyProductForm);
     const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY_FORM);
     const [brandForm, setBrandForm] = useState(EMPTY_BRAND_FORM);
     const [importForm, setImportForm] = useState(EMPTY_IMPORT_FORM);
@@ -311,6 +330,28 @@ export default function AdminDashboard() {
         }
     }, [authFetch]);
 
+    const loadAttributeMeta = useCallback(async (categoryId = '') => {
+        if (!canUseAdmin) return;
+        setAttributeMetaLoading(true);
+        try {
+            const qs = new URLSearchParams();
+            if (String(categoryId || '').trim()) {
+                qs.set('category_id', String(categoryId));
+            }
+            const suffix = qs.toString() ? `?${qs.toString()}` : '';
+            const res = await authFetch(`/api/catalog/admin/attribute-meta/${suffix}`, {method: 'GET'});
+            const data = await readJsonSafe(res);
+            if (!res.ok) {
+                throw new Error(data?.detail || 'Не удалось загрузить подсказки характеристик');
+            }
+            setAttributeMeta(Array.isArray(data?.attributes) ? data.attributes : []);
+        } catch {
+            setAttributeMeta([]);
+        } finally {
+            setAttributeMetaLoading(false);
+        }
+    }, [authFetch, canUseAdmin]);
+
     const loadUsers = useCallback(async ({searchValue, statusValue, roleValue, pageValue} = {}) => {
         setLoadingUsers(true);
         try {
@@ -362,6 +403,12 @@ export default function AdminDashboard() {
         loadUsers({pageValue: 1});
     }, [canUseAdmin, mode, loadUsers]);
 
+    useEffect(() => {
+        if (!canUseAdmin) return;
+        if (mode !== 'product' || productPanelMode !== 'manual') return;
+        loadAttributeMeta(form.category_id);
+    }, [canUseAdmin, mode, productPanelMode, form.category_id, loadAttributeMeta]);
+
     const categoryOptions = useMemo(() => {
         const categoryMap = new Map(categories.map((category) => [category.id, category]));
         return categories.map((category) => {
@@ -376,6 +423,47 @@ export default function AdminDashboard() {
     const selectedUser = useMemo(
         () => users.find((item) => item.id === selectedUserId) || null,
         [users, selectedUserId]
+    );
+
+    const canonicalAttributeNameMap = useMemo(() => {
+        const map = new Map();
+        attributeMeta.forEach((item) => {
+            const name = String(item?.name || '').trim();
+            if (!name) return;
+            map.set(name.toLowerCase(), name);
+        });
+        return map;
+    }, [attributeMeta]);
+
+    const attributeNameOptions = useMemo(() => {
+        const values = new Map(canonicalAttributeNameMap);
+        (form.characteristics || []).forEach((item) => {
+            const name = String(item?.name || '').trim();
+            if (!name) return;
+            values.set(name.toLowerCase(), name);
+        });
+        return Array.from(values.values()).sort((a, b) => a.localeCompare(b, 'ru'));
+    }, [canonicalAttributeNameMap, form.characteristics]);
+
+    const attributeValuesMap = useMemo(() => {
+        const map = new Map();
+        attributeMeta.forEach((item) => {
+            const name = String(item?.name || '').trim().toLowerCase();
+            if (!name) return;
+            const values = Array.isArray(item?.values) ? item.values : [];
+            map.set(
+                name,
+                values
+                    .map((entry) => String(entry?.value || '').trim())
+                    .filter(Boolean)
+            );
+        });
+        return map;
+    }, [attributeMeta]);
+
+    const quickAttributeNames = useMemo(
+        () => attributeMeta.slice(0, 8).map((item) => String(item?.name || '').trim()).filter(Boolean),
+        [attributeMeta]
     );
 
     useEffect(() => {
@@ -450,8 +538,75 @@ export default function AdminDashboard() {
     const handleBrandChange = (field, value) => setBrandForm((prev) => ({...prev, [field]: value}));
     const handleImportChange = (field, value) => setImportForm((prev) => ({...prev, [field]: value}));
 
+    const addImageRow = () => {
+        setForm((prev) => ({
+            ...prev,
+            images: [...(Array.isArray(prev.images) ? prev.images : []), createImageRow()],
+        }));
+    };
+
+    const updateImageRow = (rowId, value) => {
+        setForm((prev) => ({
+            ...prev,
+            images: (Array.isArray(prev.images) ? prev.images : []).map((row) => (
+                row.row_id === rowId
+                    ? {...row, image_url: value}
+                    : row
+            )),
+        }));
+    };
+
+    const removeImageRow = (rowId) => {
+        setForm((prev) => {
+            const current = Array.isArray(prev.images) ? prev.images : [];
+            const next = current.filter((row) => row.row_id !== rowId);
+            return {
+                ...prev,
+                images: next.length ? next : [createImageRow()],
+            };
+        });
+    };
+
+    const addCharacteristicRow = (name = '') => {
+        setForm((prev) => ({
+            ...prev,
+            characteristics: [...(Array.isArray(prev.characteristics) ? prev.characteristics : []), createCharacteristicRow({name})],
+        }));
+    };
+
+    const updateCharacteristicRow = (rowId, field, value) => {
+        setForm((prev) => ({
+            ...prev,
+            characteristics: (Array.isArray(prev.characteristics) ? prev.characteristics : []).map((row) => (
+                row.row_id === rowId
+                    ? {...row, [field]: value}
+                    : row
+            )),
+        }));
+    };
+
+    const normalizeCharacteristicName = (rowId) => {
+        setForm((prev) => ({
+            ...prev,
+            characteristics: (Array.isArray(prev.characteristics) ? prev.characteristics : []).map((row) => {
+                if (row.row_id !== rowId) return row;
+                const rawName = String(row?.name || '').trim();
+                if (!rawName) return {...row, name: ''};
+                const canonical = canonicalAttributeNameMap.get(rawName.toLowerCase()) || rawName;
+                return {...row, name: canonical};
+            }),
+        }));
+    };
+
+    const removeCharacteristicRow = (rowId) => {
+        setForm((prev) => ({
+            ...prev,
+            characteristics: (Array.isArray(prev.characteristics) ? prev.characteristics : []).filter((row) => row.row_id !== rowId),
+        }));
+    };
+
     const resetProductForm = () => {
-        setForm(EMPTY_FORM);
+        setForm(createEmptyProductForm());
         setEditingProductId(null);
         setProductSubmitAttempted(false);
     };
@@ -512,8 +667,8 @@ export default function AdminDashboard() {
                 price: form.price,
                 stock: Number(form.stock),
                 is_active: !!form.is_active,
-                images: normalizeImageLines(form.images_text),
-                characteristics: normalizeCharacteristicLines(form.characteristics_text),
+                images: normalizeImageRows(form.images),
+                characteristics: normalizeCharacteristicRows(form.characteristics, canonicalAttributeNameMap),
             };
 
             const isEditing = !!editingProductId;
@@ -684,8 +839,12 @@ export default function AdminDashboard() {
             price: normalizePriceForForm(product.price),
             stock: product.stock ?? '',
             is_active: !!product.is_active,
-            images_text: Array.isArray(product.images) ? product.images.map((image) => image.image_url).join('\n') : '',
-            characteristics_text: characteristicsToText(product.characteristics),
+            images: Array.isArray(product.images) && product.images.length
+                ? product.images.map((image) => createImageRow(image))
+                : [createImageRow()],
+            characteristics: Array.isArray(product.characteristics)
+                ? product.characteristics.map((item) => createCharacteristicRow(item))
+                : [],
         });
         window.scrollTo({top: 0, behavior: 'smooth'});
     };
@@ -1180,29 +1339,150 @@ export default function AdminDashboard() {
                                                 <textarea className={controlClass(styles)} data-invalid="false" rows="5" value={form.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Коротко опишите товар, преимущества и применение"/>
                                             </label>
 
-                                            <label className={styles.field}>
-                                                <span>Характеристики</span>
-                                                <textarea
-                                                    rows="5"
-                                                    className={controlClass(styles)}
-                                                    data-invalid="false"
-                                                    value={form.characteristics_text}
-                                                    onChange={(e) => handleChange('characteristics_text', e.target.value)}
-                                                    placeholder={'По одной на строку: Объем: 1 л\nТип: Лак\nСтепень блеска: Глянцевый'}
-                                                />
-                                            </label>
+                                            <div className={styles.fieldGroup}>
+                                                <div className={styles.fieldGroupHead}>
+                                                    <div>
+                                                        <div className={styles.fieldGroupTitle}>Характеристики</div>
+                                                        <div className={styles.fieldGroupHint}>
+                                                            Заполняйте пары «Название» и «Значение». Названия подсказываются по уже добавленным товарам.
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className={`${styles.secondaryBtn} ${styles.inlineBtn}`}
+                                                        onClick={() => addCharacteristicRow()}
+                                                    >
+                                                        Добавить
+                                                    </button>
+                                                </div>
 
-                                            <label className={styles.field}>
-                                                <span>Изображения</span>
-                                                <textarea
-                                                    rows="5"
-                                                    className={controlClass(styles)}
-                                                    data-invalid="false"
-                                                    value={form.images_text}
-                                                    onChange={(e) => handleChange('images_text', e.target.value)}
-                                                    placeholder={'Вставьте ссылки на изображения, по одному URL на строку'}
-                                                />
-                                            </label>
+                                                {quickAttributeNames.length > 0 ? (
+                                                    <div className={styles.attributeChips}>
+                                                        {quickAttributeNames.map((name) => (
+                                                            <button
+                                                                key={name}
+                                                                type="button"
+                                                                className={styles.attributeChip}
+                                                                onClick={() => addCharacteristicRow(name)}
+                                                            >
+                                                                {name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : null}
+
+                                                {attributeMetaLoading ? (
+                                                    <div className={styles.inlineHint}>Загружаю подсказки характеристик…</div>
+                                                ) : null}
+
+                                                {form.characteristics.length === 0 ? (
+                                                    <div className={styles.inlineHint}>Характеристики не добавлены</div>
+                                                ) : (
+                                                    <div className={styles.attributeRows}>
+                                                        {form.characteristics.map((row) => {
+                                                            const valuesOptions = attributeValuesMap.get(String(row?.name || '').trim().toLowerCase()) || [];
+                                                            const valuesListId = `attr-values-${row.row_id}`;
+                                                            return (
+                                                                <div key={row.row_id} className={styles.attributeRow}>
+                                                                    <input
+                                                                        className={controlClass(styles)}
+                                                                        data-invalid="false"
+                                                                        value={row.name}
+                                                                        onChange={(e) => updateCharacteristicRow(row.row_id, 'name', e.target.value)}
+                                                                        onBlur={() => normalizeCharacteristicName(row.row_id)}
+                                                                        placeholder="Название"
+                                                                        list="admin-attribute-names"
+                                                                    />
+                                                                    <input
+                                                                        className={controlClass(styles)}
+                                                                        data-invalid="false"
+                                                                        value={row.value}
+                                                                        onChange={(e) => updateCharacteristicRow(row.row_id, 'value', e.target.value)}
+                                                                        placeholder="Значение"
+                                                                        list={valuesListId}
+                                                                    />
+                                                                    <label className={styles.attributeToggle}>
+                                                                        <input
+                                                                            className={styles.checkboxInput}
+                                                                            type="checkbox"
+                                                                            checked={row.is_filterable !== false}
+                                                                            onChange={(e) => updateCharacteristicRow(row.row_id, 'is_filterable', e.target.checked)}
+                                                                        />
+                                                                        <span>В фильтрах</span>
+                                                                    </label>
+                                                                <button
+                                                                    type="button"
+                                                                    className={`${styles.dangerBtn} ${styles.inlineBtn}`}
+                                                                    onClick={() => removeCharacteristicRow(row.row_id)}
+                                                                >
+                                                                    Убрать
+                                                                </button>
+                                                                    <datalist id={valuesListId}>
+                                                                        {valuesOptions.map((valueItem) => (
+                                                                            <option key={`${row.row_id}-${valueItem}`} value={valueItem} />
+                                                                        ))}
+                                                                    </datalist>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
+                                                <datalist id="admin-attribute-names">
+                                                    {attributeNameOptions.map((name) => (
+                                                        <option key={name} value={name} />
+                                                    ))}
+                                                </datalist>
+                                            </div>
+
+                                            <div className={styles.fieldGroup}>
+                                                <div className={styles.fieldGroupHead}>
+                                                    <div>
+                                                        <div className={styles.fieldGroupTitle}>Изображения</div>
+                                                        <div className={styles.fieldGroupHint}>
+                                                            Добавьте ссылки на фото. Первая картинка будет обложкой товара.
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className={`${styles.secondaryBtn} ${styles.inlineBtn}`}
+                                                        onClick={addImageRow}
+                                                    >
+                                                        Добавить
+                                                    </button>
+                                                </div>
+
+                                                <div className={styles.imageRows}>
+                                                    {(form.images || []).map((row, index) => (
+                                                        <div key={row.row_id} className={styles.imageRow}>
+                                                            <div className={styles.imagePreview}>
+                                                                <img
+                                                                    src={String(row?.image_url || '').trim() || productPlaceholder}
+                                                                    alt={`Превью ${index + 1}`}
+                                                                    onError={(event) => {
+                                                                        event.currentTarget.onerror = null;
+                                                                        event.currentTarget.src = productPlaceholder;
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <input
+                                                                className={controlClass(styles)}
+                                                                data-invalid="false"
+                                                                value={row.image_url}
+                                                                onChange={(e) => updateImageRow(row.row_id, e.target.value)}
+                                                                placeholder="https://example.com/image.jpg"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                className={`${styles.dangerBtn} ${styles.inlineBtn}`}
+                                                                onClick={() => removeImageRow(row.row_id)}
+                                                            >
+                                                                Убрать
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className={styles.formActions}>
@@ -1512,16 +1792,16 @@ export default function AdminDashboard() {
                                                 className={`${styles.productRow} ${editingProductId === product.id ? styles.productRowActive : ''}`}
                                             >
                                                 <div className={styles.productThumbWrap}>
-                                                    {getProductPreview(product) ? (
-                                                        <img
-                                                            src={getProductPreview(product)}
-                                                            alt={product.name}
-                                                            className={styles.productThumb}
-                                                            loading="lazy"
-                                                        />
-                                                    ) : (
-                                                        <div className={styles.productThumbPlaceholder}>Нет фото</div>
-                                                    )}
+                                                    <img
+                                                        src={getProductPreview(product)}
+                                                        alt={product.name}
+                                                        className={styles.productThumb}
+                                                        loading="lazy"
+                                                        onError={(event) => {
+                                                            event.currentTarget.onerror = null;
+                                                            event.currentTarget.src = productPlaceholder;
+                                                        }}
+                                                    />
                                                 </div>
                                                 <div className={styles.productMain}>
                                                     <div className={styles.productName}>{product.name}</div>

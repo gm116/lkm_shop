@@ -24,6 +24,8 @@ from .importers import import_products_from_ozon_excel
 MAX_FILTER_BRANDS = 200
 MAX_FILTER_ATTRIBUTE_GROUPS = 40
 MAX_FILTER_VALUES_PER_ATTRIBUTE = 18
+MAX_ATTRIBUTE_META_NAMES = 80
+MAX_ATTRIBUTE_META_VALUES = 16
 
 
 def collect_category_descendants(category_id):
@@ -267,6 +269,61 @@ class CatalogFiltersView(APIView):
             'attributes_total': attributes_total,
             'brands_limited': brands_total > len(brands),
             'attributes_limited': attributes_total > len(attributes),
+        }, status=status.HTTP_200_OK)
+
+
+class AdminProductAttributeMetaView(APIView):
+    permission_classes = [IsCatalogAdmin]
+
+    def get(self, request):
+        category_raw = request.query_params.get('category_id')
+        category_id = parse_int(category_raw)
+        if category_raw not in (None, '') and category_id is None:
+            return Response({'detail': 'Некорректная категория'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if category_id is not None and not Category.objects.filter(id=category_id).exists():
+            return Response({'detail': 'Категория не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+        attrs_qs = ProductAttribute.objects.all()
+        if category_id is not None:
+            category_ids = collect_category_descendants(category_id)
+            attrs_qs = attrs_qs.filter(product__category_id__in=category_ids)
+
+        names_rows = list(
+            attrs_qs.values('name')
+            .annotate(count=Count('id'))
+            .order_by('-count', 'name')[:MAX_ATTRIBUTE_META_NAMES]
+        )
+        names = [row['name'] for row in names_rows]
+
+        values_rows = []
+        if names:
+            values_rows = list(
+                attrs_qs.filter(name__in=names)
+                .values('name', 'value')
+                .annotate(count=Count('id'))
+                .order_by('name', '-count', 'value')
+            )
+
+        values_map = {}
+        for row in values_rows:
+            current = values_map.setdefault(row['name'], [])
+            if len(current) >= MAX_ATTRIBUTE_META_VALUES:
+                continue
+            current.append({
+                'value': row['value'],
+                'count': row['count'],
+            })
+
+        return Response({
+            'attributes': [
+                {
+                    'name': row['name'],
+                    'count': row['count'],
+                    'values': values_map.get(row['name'], []),
+                }
+                for row in names_rows
+            ],
         }, status=status.HTTP_200_OK)
 
 

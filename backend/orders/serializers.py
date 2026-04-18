@@ -19,7 +19,15 @@ class PickupPointSerializer(serializers.Serializer):
 class OrderCreateFromCartSerializer(serializers.Serializer):
     customer_name = serializers.CharField(max_length=120)
     customer_phone = serializers.CharField(max_length=30)
-    customer_email = serializers.EmailField(required=False, allow_blank=True)
+    customer_email = serializers.EmailField(
+        required=True,
+        allow_blank=False,
+        error_messages={
+            'required': 'Укажите email',
+            'blank': 'Укажите email',
+            'invalid': 'Введите корректный email',
+        },
+    )
 
     delivery_type = serializers.ChoiceField(choices=DeliveryType.choices)
 

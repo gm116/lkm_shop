@@ -3,6 +3,7 @@ import {useMemo} from 'react';
 import {useCart} from '../store/cartContext';
 import styles from '../styles/CartPage.module.css';
 import {FaMinus, FaPlus, FaTrash} from 'react-icons/fa';
+import productPlaceholder from '../assets/product-placeholder.svg';
 
 function formatMoney(v) {
     const n = Number(v || 0);
@@ -82,15 +83,15 @@ export default function CartPage() {
                             return (
                                 <div className={styles.row} key={item.id}>
                                     <Link className={styles.imgWrap} to={productUrl}>
-                                        {item.image_url ? (
-                                            <img
-                                                className={styles.img}
-                                                src={item.image_url}
-                                                alt={item.name}
-                                            />
-                                        ) : (
-                                            <div className={styles.imgPh}/>
-                                        )}
+                                        <img
+                                            className={styles.img}
+                                            src={item.image_url || productPlaceholder}
+                                            alt={item.name}
+                                            onError={(event) => {
+                                                event.currentTarget.onerror = null;
+                                                event.currentTarget.src = productPlaceholder;
+                                            }}
+                                        />
                                     </Link>
 
                                     <div className={styles.mid}>

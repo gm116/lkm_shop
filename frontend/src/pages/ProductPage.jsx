@@ -6,8 +6,9 @@ import {useCart} from '../store/cartContext';
 import {useNotify} from '../store/notifyContext';
 import styles from '../styles/ProductPage.module.css';
 import {getProductById} from '../api/catalog';
+import productPlaceholder from '../assets/product-placeholder.svg';
 
-const FALLBACK_IMAGE = 'https://via.placeholder.com/900x1200?text=No+image';
+const FALLBACK_IMAGE = productPlaceholder;
 
 export default function ProductPage() {
     const {id} = useParams();
@@ -125,7 +126,15 @@ export default function ProductPage() {
                             onTouchStart={onTouchStart}
                             onTouchEnd={onTouchEnd}
                         >
-                            <img src={activeImage} alt={product.name} className={styles.mainImage}/>
+                            <img
+                                src={activeImage}
+                                alt={product.name}
+                                className={styles.mainImage}
+                                onError={(event) => {
+                                    event.currentTarget.onerror = null;
+                                    event.currentTarget.src = FALLBACK_IMAGE;
+                                }}
+                            />
 
                             {hasGallery ? (
                                 <>
@@ -162,7 +171,15 @@ export default function ProductPage() {
                                         className={`${styles.thumbButton} ${index === activeImageIndex ? styles.thumbButtonActive : ''}`}
                                         aria-label={`Показать фото ${index + 1}`}
                                     >
-                                        <img src={imageUrl} alt="" className={styles.thumbImage}/>
+                                        <img
+                                            src={imageUrl}
+                                            alt=""
+                                            className={styles.thumbImage}
+                                            onError={(event) => {
+                                                event.currentTarget.onerror = null;
+                                                event.currentTarget.src = FALLBACK_IMAGE;
+                                            }}
+                                        />
                                     </button>
                                 ))}
                             </div>

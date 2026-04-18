@@ -16,6 +16,7 @@ import {
 import {getBrands, getCategories, getProducts} from '../api/catalog';
 import styles from '../styles/HomePage.module.css';
 import {useNotify} from '../store/notifyContext';
+import productPlaceholder from '../assets/product-placeholder.svg';
 
 const HERO_BENEFITS = [
     'Подбор по коду и образцу',
@@ -226,16 +227,20 @@ export default function HomePage() {
 
                             <div className={styles.productShowcaseGrid}>
                                 {featuredProducts.length > 0 ? featuredProducts.map((product) => {
-                                    const image = product?.image_url || product?.image || '';
+                                    const image = product?.image_url || product?.image || productPlaceholder;
 
                                     return (
                                         <Link to={`/product/${product.id}`} key={product.id} className={styles.productShowcaseCard}>
                                             <div className={styles.productShowcaseImageWrap}>
-                                                {image ? (
-                                                    <img src={image} alt={product.name} className={styles.productShowcaseImage} />
-                                                ) : (
-                                                    <div className={styles.productShowcaseImagePh} />
-                                                )}
+                                                <img
+                                                    src={image}
+                                                    alt={product.name}
+                                                    className={styles.productShowcaseImage}
+                                                    onError={(event) => {
+                                                        event.currentTarget.onerror = null;
+                                                        event.currentTarget.src = productPlaceholder;
+                                                    }}
+                                                />
                                             </div>
                                             <div className={styles.productShowcaseName}>{product.name}</div>
                                             <div className={styles.productShowcasePrice}>{formatMoney(product.price)}</div>
