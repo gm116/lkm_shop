@@ -185,17 +185,11 @@
     gap: 10px;
     color: #667085;
     font-size: 14px;
-    margin-top: 8px;
+    margin-top: 0;
     border: 1px solid #e7ebf4;
     box-sizing: border-box;
     text-align: center;
     padding: 16px;
-}
-
-.emptyCardTop {
-    align-items: flex-start;
-    justify-content: flex-start;
-    text-align: left;
 }
 
 .statusCard {

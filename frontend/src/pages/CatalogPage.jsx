@@ -164,8 +164,13 @@ export default function CatalogPage() {
         [selectedCharacteristics],
     );
     const shouldScrollOnPageChangeRef = useRef(false);
+    const locationSearchRef = useRef(location.search);
 
     const search = query.get('search') || '';
+
+    useEffect(() => {
+        locationSearchRef.current = location.search;
+    }, [location.search]);
 
     useEffect(() => {
         if (error) notify.error(error);
@@ -173,39 +178,28 @@ export default function CatalogPage() {
 
     useEffect(() => {
         setSelectedCategoryId(categoryParam);
-    }, [categoryParam]);
-
-    useEffect(() => {
         setSelectedBrandId(brandParam);
-    }, [brandParam]);
-
-    useEffect(() => {
         setSelectedPriceMin(priceMinParam);
-    }, [priceMinParam]);
-
-    useEffect(() => {
         setSelectedPriceMax(priceMaxParam);
-    }, [priceMaxParam]);
-
-    useEffect(() => {
         setSortKey(sortParam);
-    }, [sortParam]);
-
-    useEffect(() => {
         setPageSize(pageSizeParam);
-    }, [pageSizeParam]);
-
-    useEffect(() => {
         setCurrentPage(pageParam);
-    }, [pageParam]);
-
-    useEffect(() => {
         setSelectedCharacteristics((prev) => {
             const prevSignature = serializeSelectedCharacteristics(prev);
             if (prevSignature === characteristicsParamSignature) return prev;
             return characteristicsParam;
         });
-    }, [characteristicsParam, characteristicsParamSignature]);
+    }, [
+        categoryParam,
+        brandParam,
+        priceMinParam,
+        priceMaxParam,
+        sortParam,
+        pageSizeParam,
+        pageParam,
+        characteristicsParam,
+        characteristicsParamSignature,
+    ]);
 
     useEffect(() => {
         let cancelled = false;
@@ -457,7 +451,8 @@ export default function CatalogPage() {
             });
 
         const nextSearch = params.toString();
-        const currentSearch = location.search.startsWith('?') ? location.search.slice(1) : location.search;
+        const currentSearchRaw = locationSearchRef.current || '';
+        const currentSearch = currentSearchRaw.startsWith('?') ? currentSearchRaw.slice(1) : currentSearchRaw;
 
         if (nextSearch !== currentSearch) {
             navigate(
@@ -470,7 +465,6 @@ export default function CatalogPage() {
         }
     }, [
         location.pathname,
-        location.search,
         navigate,
         search,
         selectedCategoryId,
@@ -684,20 +678,22 @@ export default function CatalogPage() {
 
                 <div className={styles.mainBlock}>
                     <div className={styles.gridFrame}>
-                        <div className={styles.productsGrid}>
-                            {(loading || isRefetching) && skeletonItems.map((item) => (
-                                <div className={styles.skeletonCard} key={item} aria-hidden="true">
-                                    <div className={styles.skeletonImg}/>
-                                    <div className={styles.skeletonLine}/>
-                                    <div className={styles.skeletonLineShort}/>
-                                    <div className={styles.skeletonBtn}/>
-                                </div>
-                            ))}
+                        {(loading || isRefetching || pagedProducts.length > 0) ? (
+                            <div className={styles.productsGrid}>
+                                {(loading || isRefetching) && skeletonItems.map((item) => (
+                                    <div className={styles.skeletonCard} key={item} aria-hidden="true">
+                                        <div className={styles.skeletonImg}/>
+                                        <div className={styles.skeletonLine}/>
+                                        <div className={styles.skeletonLineShort}/>
+                                        <div className={styles.skeletonBtn}/>
+                                    </div>
+                                ))}
 
-                            {!loading && !isRefetching && !error && pagedProducts.map((product) => (
-                                <ProductCard product={product} key={product.id}/>
-                            ))}
-                        </div>
+                                {!loading && !isRefetching && !error && pagedProducts.map((product) => (
+                                    <ProductCard product={product} key={product.id}/>
+                                ))}
+                            </div>
+                        ) : null}
 
                         {!loading && error && sortedProducts.length === 0 ? (
                             <div className={styles.emptyCard}>
@@ -719,7 +715,7 @@ export default function CatalogPage() {
                         ) : null}
 
                         {!error && !loading && sortedProducts.length === 0 ? (
-                            <div className={`${styles.emptyCard} ${styles.emptyCardTop}`}>
+                            <div className={styles.emptyCard}>
                                 <span className={styles.notFound}>Нет товаров по выбранным фильтрам</span>
                                 <div className={styles.emptyHelp}>
                                     Попробуйте снять часть фильтров или переключиться на раздел «Все товары».

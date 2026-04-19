@@ -261,6 +261,7 @@ export default function AdminDashboard() {
     const [categorySubmitAttempted, setCategorySubmitAttempted] = useState(false);
     const [brandSubmitAttempted, setBrandSubmitAttempted] = useState(false);
     const [importSubmitAttempted, setImportSubmitAttempted] = useState(false);
+    const [openValueSuggestRowId, setOpenValueSuggestRowId] = useState(null);
 
     const canUseAdmin = !!permissions?.is_superuser || !!permissions?.is_staff;
 
@@ -406,8 +407,8 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (!canUseAdmin) return;
         if (mode !== 'product' || productPanelMode !== 'manual') return;
-        loadAttributeMeta(form.category_id);
-    }, [canUseAdmin, mode, productPanelMode, form.category_id, loadAttributeMeta]);
+        loadAttributeMeta();
+    }, [canUseAdmin, mode, productPanelMode, loadAttributeMeta]);
 
     const categoryOptions = useMemo(() => {
         const categoryMap = new Map(categories.map((category) => [category.id, category]));
@@ -435,16 +436,6 @@ export default function AdminDashboard() {
         return map;
     }, [attributeMeta]);
 
-    const attributeNameOptions = useMemo(() => {
-        const values = new Map(canonicalAttributeNameMap);
-        (form.characteristics || []).forEach((item) => {
-            const name = String(item?.name || '').trim();
-            if (!name) return;
-            values.set(name.toLowerCase(), name);
-        });
-        return Array.from(values.values()).sort((a, b) => a.localeCompare(b, 'ru'));
-    }, [canonicalAttributeNameMap, form.characteristics]);
-
     const attributeValuesMap = useMemo(() => {
         const map = new Map();
         attributeMeta.forEach((item) => {
@@ -458,8 +449,17 @@ export default function AdminDashboard() {
                     .filter(Boolean)
             );
         });
+        (form.characteristics || []).forEach((item) => {
+            const name = String(item?.name || '').trim().toLowerCase();
+            const value = String(item?.value || '').trim();
+            if (!name || !value) return;
+            const current = map.get(name) || [];
+            if (!current.includes(value)) {
+                map.set(name, [...current, value]);
+            }
+        });
         return map;
-    }, [attributeMeta]);
+    }, [attributeMeta, form.characteristics]);
 
     const quickAttributeNames = useMemo(
         () => attributeMeta.slice(0, 8).map((item) => String(item?.name || '').trim()).filter(Boolean),
@@ -599,6 +599,9 @@ export default function AdminDashboard() {
     };
 
     const removeCharacteristicRow = (rowId) => {
+        if (openValueSuggestRowId === rowId) {
+            setOpenValueSuggestRowId(null);
+        }
         setForm((prev) => ({
             ...prev,
             characteristics: (Array.isArray(prev.characteristics) ? prev.characteristics : []).filter((row) => row.row_id !== rowId),
@@ -690,6 +693,7 @@ export default function AdminDashboard() {
             resetProductForm();
             setSuccess(isEditing ? `Товар "${data.name}" обновлен` : `Товар "${data.name}" добавлен`);
             await loadProducts(search, page);
+            await loadAttributeMeta();
         } catch (e) {
             setError(e?.message || 'Ошибка создания товара');
         } finally {
@@ -1344,7 +1348,7 @@ export default function AdminDashboard() {
                                                     <div>
                                                         <div className={styles.fieldGroupTitle}>Характеристики</div>
                                                         <div className={styles.fieldGroupHint}>
-                                                            Заполняйте пары «Название» и «Значение». Названия подсказываются по уже добавленным товарам.
+                                                            Заполните название и значение характеристики. При вводе названия появятся подсказки из уже добавленных товаров.
                                                         </div>
                                                     </div>
                                                     <button
@@ -1381,7 +1385,7 @@ export default function AdminDashboard() {
                                                     <div className={styles.attributeRows}>
                                                         {form.characteristics.map((row) => {
                                                             const valuesOptions = attributeValuesMap.get(String(row?.name || '').trim().toLowerCase()) || [];
-                                                            const valuesListId = `attr-values-${row.row_id}`;
+                                                            const hasValueOptions = valuesOptions.length > 0;
                                                             return (
                                                                 <div key={row.row_id} className={styles.attributeRow}>
                                                                     <input
@@ -1391,16 +1395,45 @@ export default function AdminDashboard() {
                                                                         onChange={(e) => updateCharacteristicRow(row.row_id, 'name', e.target.value)}
                                                                         onBlur={() => normalizeCharacteristicName(row.row_id)}
                                                                         placeholder="Название"
-                                                                        list="admin-attribute-names"
                                                                     />
-                                                                    <input
-                                                                        className={controlClass(styles)}
-                                                                        data-invalid="false"
-                                                                        value={row.value}
-                                                                        onChange={(e) => updateCharacteristicRow(row.row_id, 'value', e.target.value)}
-                                                                        placeholder="Значение"
-                                                                        list={valuesListId}
-                                                                    />
+                                                                    <div className={styles.valueInputWrap}>
+                                                                        <input
+                                                                            className={controlClass(styles)}
+                                                                            data-invalid="false"
+                                                                            value={row.value}
+                                                                            onChange={(e) => updateCharacteristicRow(row.row_id, 'value', e.target.value)}
+                                                                            placeholder="Значение"
+                                                                        />
+                                                                        {hasValueOptions ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                className={styles.valueSuggestToggle}
+                                                                                onClick={() => setOpenValueSuggestRowId((prev) => (
+                                                                                    prev === row.row_id ? null : row.row_id
+                                                                                ))}
+                                                                                aria-label="Показать варианты значения"
+                                                                            >
+                                                                                <FaChevronDown />
+                                                                            </button>
+                                                                        ) : null}
+                                                                        {hasValueOptions && openValueSuggestRowId === row.row_id ? (
+                                                                            <div className={styles.valueSuggestPopover}>
+                                                                                {valuesOptions.map((valueItem) => (
+                                                                                    <button
+                                                                                        key={`${row.row_id}-suggest-${valueItem}`}
+                                                                                        type="button"
+                                                                                        className={`${styles.valueSuggestBtn} ${row.value === valueItem ? styles.valueSuggestBtnActive : ''}`}
+                                                                                        onClick={() => {
+                                                                                            updateCharacteristicRow(row.row_id, 'value', valueItem);
+                                                                                            setOpenValueSuggestRowId(null);
+                                                                                        }}
+                                                                                    >
+                                                                                        {valueItem}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        ) : null}
+                                                                    </div>
                                                                     <label className={styles.attributeToggle}>
                                                                         <input
                                                                             className={styles.checkboxInput}
@@ -1417,22 +1450,12 @@ export default function AdminDashboard() {
                                                                 >
                                                                     Убрать
                                                                 </button>
-                                                                    <datalist id={valuesListId}>
-                                                                        {valuesOptions.map((valueItem) => (
-                                                                            <option key={`${row.row_id}-${valueItem}`} value={valueItem} />
-                                                                        ))}
-                                                                    </datalist>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
                                                 )}
 
-                                                <datalist id="admin-attribute-names">
-                                                    {attributeNameOptions.map((name) => (
-                                                        <option key={name} value={name} />
-                                                    ))}
-                                                </datalist>
                                             </div>
 
                                             <div className={styles.fieldGroup}>

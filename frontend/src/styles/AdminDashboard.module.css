@@ -448,6 +448,73 @@
     align-items: center;
 }
 
+.valueInputWrap {
+    position: relative;
+    min-width: 0;
+}
+
+.valueInputWrap input {
+    padding-right: 34px;
+}
+
+.valueSuggestToggle {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #7b8699;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.valueSuggestPopover {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    max-height: 188px;
+    overflow-y: auto;
+    border: 1px solid #d7dce5;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 10px 22px rgba(16, 24, 40, 0.12);
+    padding: 6px;
+}
+
+.valueSuggestBtn {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #334155;
+    border-radius: 8px;
+    padding: 7px 8px;
+    text-align: left;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.valueSuggestBtn:hover {
+    background: #f4f8ff;
+    border-color: #d9e6fb;
+}
+
+.valueSuggestBtnActive {
+    border-color: #d4e3fa;
+    color: #194b99;
+    background: #eaf2ff;
+}
+
 .attributeToggle {
     display: inline-flex;
     align-items: center;

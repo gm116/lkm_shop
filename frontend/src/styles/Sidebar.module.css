@@ -395,7 +395,19 @@
     cursor: pointer;
 }
 
+.facetBtn:hover {
+    border-color: #bfd0eb;
+    background: #f4f8ff;
+    color: #25364f;
+}
+
 .facetBtnActive {
+    border-color: #8fb0df;
+    color: #194b99;
+    background: #eaf2ff;
+}
+
+.facetBtnActive:hover {
     border-color: #8fb0df;
     color: #194b99;
     background: #eaf2ff;
@@ -405,6 +417,10 @@
     font-size: 10px;
     font-weight: 700;
     color: #60708b;
+}
+
+.facetBtn:hover .facetCount {
+    color: #4f6078;
 }
 
 .resetBtn {
