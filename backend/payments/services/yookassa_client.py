@@ -40,6 +40,7 @@ def _build_receipt(*, customer_email: str, items: list[dict]) -> dict:
     vat_code = getattr(settings, 'YOOKASSA_RECEIPT_VAT_CODE', '1') or '1'
     payment_mode = getattr(settings, 'YOOKASSA_RECEIPT_PAYMENT_MODE', 'full_payment') or 'full_payment'
     payment_subject = getattr(settings, 'YOOKASSA_RECEIPT_PAYMENT_SUBJECT', 'commodity') or 'commodity'
+    measure = getattr(settings, 'YOOKASSA_RECEIPT_MEASURE', 'piece') or 'piece'
 
     receipt_items = []
     for item in items:
@@ -56,6 +57,7 @@ def _build_receipt(*, customer_email: str, items: list[dict]) -> dict:
             'vat_code': item.get('vat_code') or vat_code,
             'payment_mode': item.get('payment_mode') or payment_mode,
             'payment_subject': item.get('payment_subject') or payment_subject,
+            'measure': item.get('measure') or measure,
         })
 
     if not receipt_items:

@@ -1470,9 +1470,12 @@
 .orderActionsRow {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
     margin-bottom: 10px;
 }
 
+.orderPayBtn,
 .orderActionBtn {
     height: 34px;
     padding: 0 14px;
@@ -1483,7 +1486,22 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.orderPayBtn {
+    background: #1d1d1b;
+    border-color: #1d1d1b;
+    color: #ffffff;
+}
+
+.orderPayBtn:hover {
+    background: #33312e;
+    border-color: #33312e;
 }
 
 .orderActionBtn:hover {

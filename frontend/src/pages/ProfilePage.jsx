@@ -1058,6 +1058,8 @@ export default function ProfilePage() {
                                     const paymentStateText = o.payment_succeeded
                                         ? 'Оплата подтверждена'
                                         : (o.status === 'canceled' ? 'Оплата отменена' : 'Ожидается оплата');
+                                    const paymentUrl = String(o.payment_url || '').trim();
+                                    const canPayOrder = Boolean(paymentUrl) && !o.payment_succeeded && o.status !== 'canceled';
 
                                     return (
                                         <details className={styles.orderCard} key={o.id}>
@@ -1131,6 +1133,16 @@ export default function ProfilePage() {
                                                 </div>
 
                                                 <div className={styles.orderActionsRow}>
+                                                    {canPayOrder ? (
+                                                        <a
+                                                            className={styles.orderPayBtn}
+                                                            href={paymentUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                        >
+                                                            Оплатить заказ
+                                                        </a>
+                                                    ) : null}
                                                     <button
                                                         className={styles.orderActionBtn}
                                                         type="button"

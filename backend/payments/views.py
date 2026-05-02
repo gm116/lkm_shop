@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
 
 from orders.models import OrderStatus
+from orders.notifications import send_order_paid_email
 from orders.services import cancel_order, OrderCancellationError
 from .models import Payment, PaymentWebhookEvent
 from .serializers import CreatePaymentSerializer
@@ -72,6 +73,33 @@ def _sync_order_paid(order: Order):
 
 def _sync_order_canceled(order: Order):
     return cancel_order(order)
+
+
+def _claim_paid_email_order(payment_id):
+    with transaction.atomic():
+        payment = (
+            Payment.objects
+            .select_for_update()
+            .select_related('order')
+            .prefetch_related('order__items')
+            .get(pk=payment_id)
+        )
+        if payment.paid_email_sent_at is not None:
+            return None
+        payment.paid_email_sent_at = timezone.now()
+        payment.save(update_fields=['paid_email_sent_at', 'updated_at'])
+        return payment.order
+
+
+def _send_paid_email_once(payment: Payment):
+    try:
+        order = _claim_paid_email_order(payment.pk)
+    except Payment.DoesNotExist:
+        return
+    if order is None:
+        return
+    order.refresh_from_db()
+    send_order_paid_email(order)
 
 
 def _rollback_order_on_payment_creation_failure(order: Order):
@@ -393,13 +421,15 @@ class YooKassaWebhookView(APIView):
         p.status = new_status
         p.raw = payload
 
-        if new_status == Payment.Status.SUCCEEDED and p.paid_at is None:
+        should_set_paid_at = new_status == Payment.Status.SUCCEEDED and p.paid_at is None
+        if should_set_paid_at:
             p.paid_at = timezone.now()
 
         p.save(update_fields=['status', 'raw', 'paid_at', 'updated_at'])
 
         if new_status == Payment.Status.SUCCEEDED:
             _sync_order_paid(p.order)
+            _send_paid_email_once(p)
 
         if new_status == Payment.Status.CANCELED:
             try:
@@ -439,12 +469,14 @@ class PaymentSyncView(APIView):
 
         p.status = new_status
         p.raw = data
-        if new_status == Payment.Status.SUCCEEDED and p.paid_at is None:
+        should_set_paid_at = new_status == Payment.Status.SUCCEEDED and p.paid_at is None
+        if should_set_paid_at:
             p.paid_at = timezone.now()
         p.save(update_fields=['status', 'raw', 'paid_at', 'updated_at'])
 
         if new_status == Payment.Status.SUCCEEDED:
             _sync_order_paid(p.order)
+            _send_paid_email_once(p)
         elif new_status == Payment.Status.CANCELED:
             try:
                 _sync_order_canceled(p.order)

@@ -118,11 +118,36 @@ def _payment_succeeded(order: Order) -> bool:
     return order.payments.filter(status=Payment.Status.SUCCEEDED).exists()
 
 
+def _active_payment(order: Order):
+    active_statuses = {Payment.Status.PENDING, Payment.Status.WAITING_FOR_CAPTURE}
+    prefetched = getattr(order, '_prefetched_objects_cache', {}) or {}
+    payments = prefetched.get('payments')
+    if payments is not None:
+        active_payments = [
+            payment
+            for payment in payments
+            if payment.status in active_statuses and payment.confirmation_url
+        ]
+        return max(active_payments, key=lambda payment: payment.created_at, default=None)
+
+    return (
+        order.payments
+        .filter(status__in=active_statuses)
+        .exclude(confirmation_url='')
+        .order_by('-created_at')
+        .first()
+    )
+
+
 def serialize_order(order: Order, include_customer: bool = False):
+    active_payment = None if _payment_succeeded(order) else _active_payment(order)
+
     payload = {
         'id': order.id,
         'status': order.status,
         'payment_succeeded': _payment_succeeded(order),
+        'payment_url': active_payment.confirmation_url if active_payment else '',
+        'payment_status': active_payment.status if active_payment else '',
         'total_amount': order.total_amount,
         'delivery_type': order.delivery_type,
         'delivery_city': order.delivery_city,
