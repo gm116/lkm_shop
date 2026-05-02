@@ -1,3 +1,4 @@
+.env
 frontend/.env
 frontend/.env.docker
 backend/.env

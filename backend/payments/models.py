@@ -45,3 +45,25 @@ class Payment(models.Model):
 
     def __str__(self):
         return f'{self.provider}:{self.provider_payment_id or self.id}'
+
+
+class PaymentWebhookEvent(models.Model):
+    """
+    Фиксируем уже обработанные webhook-сообщения для защиты от replay.
+    """
+    provider = models.CharField(max_length=32, default=Payment.Provider.YOOKASSA)
+    event_type = models.CharField(max_length=64)
+    provider_payment_id = models.CharField(max_length=128, db_index=True)
+    payment_status = models.CharField(max_length=32, blank=True, default='')
+    payload_hash = models.CharField(max_length=64, unique=True)
+    raw = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['provider', 'provider_payment_id', 'created_at']),
+            models.Index(fields=['event_type', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.provider}:{self.event_type}:{self.provider_payment_id}'

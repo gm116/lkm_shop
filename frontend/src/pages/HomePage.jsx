@@ -17,6 +17,7 @@ import {getBrands, getCategories, getProducts} from '../api/catalog';
 import styles from '../styles/HomePage.module.css';
 import {useNotify} from '../store/notifyContext';
 import productPlaceholder from '../assets/product-placeholder.svg';
+import {siteConfig} from '../config/siteConfig';
 
 const HERO_BENEFITS = [
     'Подбор по коду и образцу',
@@ -71,35 +72,47 @@ const SERVICE_ITEMS = [
     },
 ];
 
-const CONTACT_LINKS = [
-    {
-        title: '2ГИС',
-        note: 'Маршрут и навигация',
-        href: 'https://2gis.ru/nabchelny/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%8D%D0%BC%D0%B0%D0%BB%D0%B8',
-    },
-    {
-        title: 'Яндекс Карты',
-        note: 'Адрес и схема проезда',
-        href: 'https://yandex.ru/maps/chelny/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%8D%D0%BC%D0%B0%D0%BB%D0%B8/',
-    },
-    {
-        title: 'Telegram',
-        note: 'Консультации и быстрые вопросы',
-        href: 'https://t.me/',
-    },
-    {
-        title: 'WhatsApp',
-        note: 'Связь по материалам и заказам',
-        href: 'https://wa.me/79000000000',
-    },
-    {
-        title: 'Ozon',
-        note: 'Онлайн-витрина магазина',
-        href: 'https://www.ozon.ru/',
-    },
-];
+function buildContactLinks() {
+    return [
+        {
+            title: '2ГИС',
+            note: 'Маршрут и навигация',
+            href: siteConfig.links.twoGis,
+        },
+        {
+            title: 'Яндекс Карты',
+            note: 'Адрес и схема проезда',
+            href: siteConfig.links.yandexMaps,
+        },
+        {
+            title: 'Telegram',
+            note: 'Консультации и быстрые вопросы',
+            href: siteConfig.links.telegram,
+        },
+        {
+            title: 'WhatsApp',
+            note: 'Связь по материалам и заказам',
+            href: siteConfig.links.whatsapp,
+        },
+        {
+            title: 'Ozon',
+            note: 'Онлайн-витрина магазина',
+            href: siteConfig.links.ozon,
+        },
+    ];
+}
 
 function ContactCard({title, note, href}) {
+    if (!href) {
+        return (
+            <div className={`${styles.contactCard} ${styles.contactCardDisabled}`}>
+                <div className={styles.contactTitle}>{title}</div>
+                <div className={styles.contactText}>{note}</div>
+                <div className={styles.contactAction}>Скоро добавим</div>
+            </div>
+        );
+    }
+
     return (
         <a href={href} target="_blank" rel="noreferrer" className={styles.contactCard}>
             <div className={styles.contactTitle}>{title}</div>
@@ -159,6 +172,7 @@ export default function HomePage() {
 
     const featuredBrands = useMemo(() => brands.slice(0, 12), [brands]);
     const featuredProducts = useMemo(() => products.slice(0, 4), [products]);
+    const contactLinks = useMemo(() => buildContactLinks(), []);
 
     function formatMoney(value) {
         const n = Number(value || 0);
@@ -203,7 +217,7 @@ export default function HomePage() {
                         <div className={styles.infoCard}>
                             <div className={styles.infoTitle}>Кому подходим</div>
                             <div className={styles.infoText}>
-                                Частные мастера, автосервисы, кузовные участки и компании.
+                                Частные мастера, автосервисы, кузовные.
                             </div>
                         </div>
 
@@ -317,14 +331,14 @@ export default function HomePage() {
 
                 <section className={`${styles.section} ${styles.contactsSection}`} id="contacts">
                     <div className={styles.contactsPanel}>
-                        <h2 className={styles.sectionTitle}>Магазин автоэмалей в Набережных Челнах</h2>
+                        <h2 className={styles.sectionTitle}>Магазин автоэмалей</h2>
                         <div className={styles.contactFactsRow}>
                             <div className={styles.contactFact}><FaMapMarkerAlt /> Магазин и выдача заказов на месте</div>
                             <div className={styles.contactFact}><FaTruck /> Доставка по городу и по России</div>
                             <div className={styles.contactFact}><FaComments /> Помощь с подбором материалов</div>
                         </div>
                         <div className={styles.contactGrid}>
-                            {CONTACT_LINKS.map((item) => (
+                            {contactLinks.map((item) => (
                                 <ContactCard key={item.title} {...item} />
                             ))}
                         </div>

@@ -2,12 +2,10 @@ services:
   lkmShopDataBase:
     image: postgres:latest
     container_name: lkmShopDataBase
-    environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    env_file:
+      - ./.env
     ports:
-      - "5544:5432"
+      - "${DB_EXTERNAL_PORT:-5544}:5432"
     volumes:
       - ./data:/var/lib/postgresql/data
       - ./init/:/docker-entrypoint-initdb.d/

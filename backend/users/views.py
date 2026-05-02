@@ -25,9 +25,9 @@ def set_refresh_cookie(response, token):
         key='refresh_token',
         value=str(token),
         httponly=True,
-        secure=False,
-        samesite='Lax',
-        path='/',
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=settings.REFRESH_COOKIE_PATH,
     )
 
 
@@ -185,7 +185,7 @@ class RefreshView(APIView):
 class LogoutView(APIView):
     def post(self, request):
         response = Response({'detail': 'Вы вышли из аккаунта'}, status=status.HTTP_200_OK)
-        response.delete_cookie('refresh_token')
+        response.delete_cookie('refresh_token', path=settings.REFRESH_COOKIE_PATH)
         return response
 
 

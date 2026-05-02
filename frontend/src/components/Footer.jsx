@@ -1,5 +1,6 @@
 import styles from '../styles/Footer.module.css';
 import {Link} from 'react-router-dom';
+import {siteConfig} from '../config/siteConfig';
 
 export default function Footer({onOpenFeedback}) {
     return (
@@ -24,16 +25,16 @@ export default function Footer({onOpenFeedback}) {
 
                 <div className={styles.column}>
                     <div className={styles.title}>Контакты</div>
-                    <div className={styles.text}>support@shop-demo.ru</div>
-                    <div className={styles.text}>+7 (999) 123-45-67</div>
-                    <div className={styles.text}>Набережные Челны, Россия</div>
-                    <div className={styles.textSmall}>Пн–Пт · 08:00–17:00</div>
+                    <div className={styles.text}>{siteConfig.contactEmail}</div>
+                    <div className={styles.text}>{siteConfig.contactPhone}</div>
+                    <div className={styles.text}>{siteConfig.contactCity}, Россия</div>
+                    <div className={styles.textSmall}>{siteConfig.workHours}</div>
                 </div>
             </div>
 
             <div className={styles.bottom}>
                 <span>
-                    © {new Date().getFullYear()} Магазин. Все права защищены.
+                    © {new Date().getFullYear()} {siteConfig.storeName}. Все права защищены.
                 </span>
                 <span className={styles.disclaimer}>
                     Учебный проект. Заказы не обрабатываются.

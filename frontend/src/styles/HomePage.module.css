@@ -167,6 +167,11 @@
     background: #fff;
 }
 
+.contactCardDisabled {
+    opacity: 0.75;
+    cursor: default;
+}
+
 .infoCard {
     padding: 12px;
 }
@@ -471,6 +476,36 @@
     gap: 8px;
 }
 
+.mapWidgets {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.mapCard {
+    border: 1px solid #e9edf4;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+    min-height: 220px;
+}
+
+.mapFrame {
+    width: 100%;
+    min-height: 260px;
+    border: 0;
+    display: block;
+}
+
+.mapFrameSmall {
+    width: 100%;
+    min-height: 260px;
+    border: 0;
+    display: block;
+}
+
 .contactFact {
     display: flex;
     align-items: center;
@@ -526,6 +561,10 @@
     }
 
     .contactFactsRow {
+        grid-template-columns: 1fr;
+    }
+
+    .mapWidgets {
         grid-template-columns: 1fr;
     }
 }

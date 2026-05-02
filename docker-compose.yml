@@ -3,10 +3,9 @@ services:
     image: postgres:17
     container_name: lkm_shop_db
     env_file:
-      - path: ./database/.postgres.env.docker
-        format: raw
+      - ./database/.env
     ports:
-      - "5544:5432"
+      - "${DB_EXTERNAL_PORT:-5544}:5432"
     volumes:
       - ./database/data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -18,24 +17,18 @@ services:
     container_name: lkm_shop_backend
     working_dir: /app/backend
     env_file:
-      - path: ./backend/.env.docker
-        format: raw
-      - path: ./database/.env.docker
-        format: raw
+      - ./backend/.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings
       PYTHONUNBUFFERED: "1"
+      DJANGO_ENV_FILE: /app/backend/.env
       DB_HOST: db
       DB_PORT: "5432"
-      DEBUG: "true"
-      ALLOWED_HOSTS: "127.0.0.1,localhost,backend"
-      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
     command: ["sh", "/app/backend/entrypoint.sh"]
     volumes:
       - ./backend:/app/backend
     ports:
-      - "8080:8080"
+      - "${BACKEND_EXTERNAL_PORT:-8080}:8080"
     depends_on:
       - db
     restart: unless-stopped
@@ -46,19 +39,17 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: lkm_shop_frontend
     working_dir: /app/frontend
+    env_file:
+      - ./frontend/.env
     environment:
-      HOST: 0.0.0.0
-      PORT: "3000"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
-      BACKEND_PROXY_TARGET: "http://backend:8080"
-      REACT_APP_BACKEND_URL: "http://localhost:8080"
     command: ["npm", "start"]
     volumes:
       - ./frontend:/app/frontend
       - /app/frontend/node_modules
     ports:
-      - "3000:3000"
+      - "${FRONTEND_EXTERNAL_PORT:-3000}:3000"
     depends_on:
       - backend
     restart: unless-stopped

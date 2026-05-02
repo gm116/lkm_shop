@@ -9,34 +9,94 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-import os
 from pathlib import Path
-from decouple import config
+import os
+from decouple import AutoConfig, Config, RepositoryEnv
 from datetime import timedelta
+from urllib.parse import urlparse
+import ipaddress
+import logging
 
 
 def _split_csv(value, default=''):
     raw = value if value is not None else default
     return [item.strip() for item in str(raw).split(',') if item.strip()]
 
+
+def _normalize_origin(value: str) -> str:
+    origin = (value or '').strip().rstrip('/')
+    if not origin:
+        return ''
+    if origin.startswith('http://') or origin.startswith('https://'):
+        return origin
+    return f'https://{origin}'
+
+
+def _append_unique(items: list[str], value: str):
+    if value and value not in items:
+        items.append(value)
+
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_ip_network_pool(raw_value: str) -> tuple:
+    """
+    Поддерживает и отдельные IP, и CIDR:
+    77.75.156.11,185.71.76.0/27,2a02:5180::/32
+    """
+    pool = []
+    for item in _split_csv(raw_value, default=''):
+        try:
+            # strict=False позволяет передавать и "голый" IP.
+            pool.append(ipaddress.ip_network(item, strict=False))
+        except ValueError:
+            logger.warning("Некорректный IP/CIDR в YOOKASSA_WEBHOOK_ALLOWED_IPS: %s", item)
+    return tuple(pool)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Явно выбираем env-файл backend, чтобы не ловить конфликты с корневым/.frontend env.
+_explicit_env_path = os.getenv('DJANGO_ENV_FILE', '').strip()
+if _explicit_env_path:
+    _cfg = Config(RepositoryEnv(_explicit_env_path))
+else:
+    default_backend_env = BASE_DIR / '.env'
+    _cfg = Config(RepositoryEnv(str(default_backend_env))) if default_backend_env.exists() else AutoConfig(search_path=str(BASE_DIR))
+
+
+def config(name, default=None, cast=None):
+    kwargs = {}
+    if default is not None:
+        kwargs['default'] = default
+    if cast is not None:
+        kwargs['cast'] = cast
+    return _cfg(name, **kwargs)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='default_secret_key')
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = _split_csv(
     config(
         'ALLOWED_HOSTS',
-        default='127.0.0.1,localhost,backend,uncheering-phenomenologically-leroy.ngrok-free.dev',
+        default='127.0.0.1,localhost,backend',
     )
 )
+
+DEV_NGROK_URL = config('DEV_NGROK_URL', default='')
+_ngrok_origin = _normalize_origin(DEV_NGROK_URL)
+if _ngrok_origin:
+    _ngrok_host = urlparse(_ngrok_origin).hostname
+    if _ngrok_host and _ngrok_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_ngrok_host)
 
 
 # Application definition
@@ -59,10 +119,23 @@ INSTALLED_APPS = [
 ]
 
 
-YOOKASSA_RETURN_URL = config('YOOKASSA_RETURN_URL', default='http://localhost:3000/profile')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+YOOKASSA_RETURN_URL = config('YOOKASSA_RETURN_URL', default=f'{FRONTEND_URL.rstrip("/")}/checkout/success')
 YOOKASSA_ACCOUNT_ID = config('YOOKASSA_ACCOUNT_ID', default='')
 YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+YOOKASSA_WEBHOOK_ALLOWED_IPS = _parse_ip_network_pool(
+    config('YOOKASSA_WEBHOOK_ALLOWED_IPS', default='')
+)
+YOOKASSA_WEBHOOK_TRUST_X_FORWARDED_FOR = config(
+    'YOOKASSA_WEBHOOK_TRUST_X_FORWARDED_FOR',
+    default=False,
+    cast=bool,
+)
+YOOKASSA_WEBHOOK_ENFORCE_IP_WHITELIST = config(
+    'YOOKASSA_WEBHOOK_ENFORCE_IP_WHITELIST',
+    default=(not DEBUG),
+    cast=bool,
+)
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@lkmshop.local')
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
@@ -74,6 +147,10 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
 FEEDBACK_TO_EMAIL = config('FEEDBACK_TO_EMAIL', default=(EMAIL_HOST_USER or DEFAULT_FROM_EMAIL))
+
+REFRESH_COOKIE_SECURE = config('REFRESH_COOKIE_SECURE', default=not DEBUG, cast=bool)
+REFRESH_COOKIE_SAMESITE = config('REFRESH_COOKIE_SAMESITE', default='Lax')
+REFRESH_COOKIE_PATH = config('REFRESH_COOKIE_PATH', default='/')
 
 # Ссылка на сброс пароля действует 1 час.
 PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=3600, cast=int)
@@ -97,9 +174,10 @@ ROOT_URLCONF = 'config.urls'
 CSRF_TRUSTED_ORIGINS = _split_csv(
     config(
         'CSRF_TRUSTED_ORIGINS',
-        default='http://localhost:3000,http://127.0.0.1:3000,https://uncheering-phenomenologically-leroy.ngrok-free.dev',
+        default='http://localhost:3000,http://127.0.0.1:3000',
     )
 )
+_append_unique(CSRF_TRUSTED_ORIGINS, _ngrok_origin)
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -173,9 +251,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = _split_csv(
     config(
         'CORS_ALLOWED_ORIGINS',
-        default='http://localhost:3000,http://127.0.0.1:3000,https://uncheering-phenomenologically-leroy.ngrok-free.dev',
+        default='http://localhost:3000,http://127.0.0.1:3000',
     )
 )
+_append_unique(CORS_ALLOWED_ORIGINS, _ngrok_origin)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -185,8 +264,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1500),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=config('JWT_ACCESS_TOKEN_MINUTES', default=30, cast=int)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_TOKEN_DAYS', default=7, cast=int)),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),

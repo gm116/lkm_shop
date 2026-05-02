@@ -4,6 +4,7 @@ import {useCart} from '../store/cartContext';
 import {useAuth} from '../store/authContext';
 import styles from '../styles/Header.module.css';
 import {useEffect, useMemo, useRef} from 'react';
+import {siteConfig} from '../config/siteConfig';
 
 export default function Header() {
     const navigate = useNavigate();
@@ -55,7 +56,7 @@ export default function Header() {
             <div className={styles.header}>
                 <div className={styles.left}>
                     <a href="/catalog" className={styles.logo} onClick={handleLogoClick}>
-                        ВсеЭмалиРу
+                        {siteConfig.storeName}
                     </a>
                 </div>
 

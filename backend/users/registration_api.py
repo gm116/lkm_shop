@@ -25,9 +25,9 @@ def set_refresh_cookie(response, token):
         key='refresh_token',
         value=str(token),
         httponly=True,
-        secure=False,
-        samesite='Lax',
-        path='/',
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=settings.REFRESH_COOKIE_PATH,
     )
 
 
