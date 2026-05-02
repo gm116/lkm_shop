@@ -38,6 +38,7 @@ class FeedbackSendSerializer(serializers.Serializer):
 
 class FeedbackSendView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'feedback_send'
 
     def post(self, request):
         serializer = FeedbackSendSerializer(data=request.data)

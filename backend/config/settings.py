@@ -262,6 +262,19 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_login': config('THROTTLE_AUTH_LOGIN_RATE', default='5/min'),
+        'auth_refresh': config('THROTTLE_AUTH_REFRESH_RATE', default='120/hour'),
+        'auth_password_reset_request': config('THROTTLE_AUTH_PASSWORD_RESET_REQUEST_RATE', default='3/hour'),
+        'auth_password_reset_validate': config('THROTTLE_AUTH_PASSWORD_RESET_VALIDATE_RATE', default='20/hour'),
+        'auth_password_reset_confirm': config('THROTTLE_AUTH_PASSWORD_RESET_CONFIRM_RATE', default='10/hour'),
+        'auth_register_request_code': config('THROTTLE_AUTH_REGISTER_REQUEST_CODE_RATE', default='3/hour'),
+        'auth_register_confirm_code': config('THROTTLE_AUTH_REGISTER_CONFIRM_CODE_RATE', default='15/hour'),
+        'feedback_send': config('THROTTLE_FEEDBACK_SEND_RATE', default='3/hour'),
+    },
 }
 
 SIMPLE_JWT = {

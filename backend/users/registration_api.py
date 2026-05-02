@@ -78,6 +78,7 @@ def _send_registration_code(email, code):
 
 class RegistrationRequestCodeView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_register_request_code'
 
     def post(self, request):
         serializer = RegistrationRequestCodeSerializer(data=request.data)
@@ -141,6 +142,7 @@ class RegistrationRequestCodeView(APIView):
 
 class RegistrationConfirmCodeView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_register_confirm_code'
 
     def post(self, request):
         serializer = RegistrationConfirmCodeSerializer(data=request.data)

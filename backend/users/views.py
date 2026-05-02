@@ -34,6 +34,7 @@ def set_refresh_cookie(response, token):
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_login'
 
     def post(self, request):
         identifier = (request.data.get('username') or request.data.get('email') or '').strip()
@@ -71,6 +72,7 @@ class LoginView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_password_reset_request'
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -108,6 +110,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_password_reset_confirm'
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -137,6 +140,7 @@ class PasswordResetConfirmView(APIView):
 
 class PasswordResetValidateView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_password_reset_validate'
 
     def post(self, request):
         uidb64 = request.data.get('uid')
@@ -166,6 +170,7 @@ class PasswordResetValidateView(APIView):
 
 class RefreshView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_refresh'
 
     def post(self, request):
         token = request.COOKIES.get('refresh_token')
