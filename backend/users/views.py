@@ -12,7 +12,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.permissions import IsAuthenticated
 
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
@@ -172,11 +173,14 @@ class RefreshView(APIView):
             return Response({'detail': 'Токен обновления не найден'}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            refresh = RefreshToken(token)
-            access = refresh.access_token
+            serializer = TokenRefreshSerializer(data={'refresh': token})
+            serializer.is_valid(raise_exception=True)
+            access_token = serializer.validated_data.get('access')
+            new_refresh_token = serializer.validated_data.get('refresh')
 
-            response = Response({'access': str(access)}, status=status.HTTP_200_OK)
-            set_refresh_cookie(response, refresh)
+            response = Response({'access': access_token}, status=status.HTTP_200_OK)
+            if new_refresh_token:
+                set_refresh_cookie(response, new_refresh_token)
             return response
         except InvalidToken:
             return Response({'detail': 'Недействительный токен обновления'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -184,6 +188,12 @@ class RefreshView(APIView):
 
 class LogoutView(APIView):
     def post(self, request):
+        token = request.COOKIES.get('refresh_token')
+        if token:
+            try:
+                RefreshToken(token).blacklist()
+            except TokenError:
+                pass
         response = Response({'detail': 'Вы вышли из аккаунта'}, status=status.HTTP_200_OK)
         response.delete_cookie('refresh_token', path=settings.REFRESH_COOKIE_PATH)
         return response
