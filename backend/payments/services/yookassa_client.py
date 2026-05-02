@@ -28,7 +28,54 @@ def _cfg():
     Configuration.secret_key = getattr(settings, 'YOOKASSA_SECRET_KEY', '') or os.getenv('YOOKASSA_SECRET_KEY')
 
 
-def create_payment_for_order(*, order_id: int, amount_value: Decimal, description: str, return_url: str):
+def _money(value: Decimal) -> str:
+    return f'{Decimal(value):.2f}'
+
+
+def _build_receipt(*, customer_email: str, items: list[dict]) -> dict:
+    email = (customer_email or '').strip()
+    if not email:
+        raise RuntimeError('Для формирования чека YooKassa нужен email покупателя')
+
+    vat_code = getattr(settings, 'YOOKASSA_RECEIPT_VAT_CODE', '1') or '1'
+    payment_mode = getattr(settings, 'YOOKASSA_RECEIPT_PAYMENT_MODE', 'full_payment') or 'full_payment'
+    payment_subject = getattr(settings, 'YOOKASSA_RECEIPT_PAYMENT_SUBJECT', 'commodity') or 'commodity'
+
+    receipt_items = []
+    for item in items:
+        quantity = int(item.get('quantity') or 0)
+        amount_value = Decimal(item.get('amount_value') or 0)
+        if quantity <= 0 or amount_value <= 0:
+            continue
+
+        description = (item.get('description') or 'Товар').strip()[:128]
+        receipt_items.append({
+            'description': description,
+            'quantity': quantity,
+            'amount': {'value': _money(amount_value), 'currency': 'RUB'},
+            'vat_code': item.get('vat_code') or vat_code,
+            'payment_mode': item.get('payment_mode') or payment_mode,
+            'payment_subject': item.get('payment_subject') or payment_subject,
+        })
+
+    if not receipt_items:
+        raise RuntimeError('Для формирования чека YooKassa нужны позиции заказа')
+
+    return {
+        'customer': {'email': email},
+        'items': receipt_items,
+    }
+
+
+def create_payment_for_order(
+    *,
+    order_id: int,
+    amount_value: Decimal,
+    description: str,
+    return_url: str,
+    customer_email: str,
+    receipt_items: list[dict],
+):
     _cfg()
     if not Configuration.account_id or not Configuration.secret_key:
         raise RuntimeError('YOOKASSA credentials are not set')
@@ -41,6 +88,7 @@ def create_payment_for_order(*, order_id: int, amount_value: Decimal, descriptio
         "capture": True,
         "description": description,
         "metadata": {"order_id": str(order_id)},
+        "receipt": _build_receipt(customer_email=customer_email, items=receipt_items),
     }
 
     ypay = YooPayment.create(payload, idempotence_key)

@@ -202,6 +202,21 @@ class CreatePaymentView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
             return_url = _build_return_url(return_url_base, order.id)
+            receipt_items = [
+                {
+                    'description': item.product_name_snapshot,
+                    'quantity': item.quantity,
+                    'amount_value': item.price_snapshot,
+                }
+                for item in order.items.all()
+            ]
+            if Decimal(order.delivery_price or 0) > 0:
+                receipt_items.append({
+                    'description': 'Доставка',
+                    'quantity': 1,
+                    'amount_value': order.delivery_price,
+                    'payment_subject': 'service',
+                })
 
             try:
                 r = create_payment_for_order(
@@ -209,6 +224,8 @@ class CreatePaymentView(APIView):
                     amount_value=amount,
                     description=_order_description(order),
                     return_url=return_url,
+                    customer_email=order.customer_email,
+                    receipt_items=receipt_items,
                 )
 
                 if not (r.get("confirmation_url") or ""):
