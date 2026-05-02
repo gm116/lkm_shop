@@ -7,4 +7,5 @@ database/.env
 database/.env.docker
 database/.postgres.env.docker
 database/data
+frontend/public/legal-docs/
 .idea

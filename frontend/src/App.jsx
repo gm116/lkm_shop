@@ -18,10 +18,12 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import StaffOrdersPage from './pages/StaffOrdersPage';
 import StaffOrderPage from './pages/StaffOrderPage';
 import StaffAnalyticsPage from './pages/StaffAnalyticsPage';
+import LegalDocumentPage from './pages/LegalDocumentPage';
 
 import Header from './components/Header';
 import Footer from "./components/Footer";
 import FeedbackModal from './components/FeedbackModal';
+import CookieNotice from './components/CookieNotice';
 
 import {useAuth} from './store/authContext';
 
@@ -132,6 +134,7 @@ export default function App() {
                         <Route path="/checkout" element={<CheckoutPage/>}/>
                         <Route path="/checkout/redirect" element={<CheckoutRedirectPage/>}/>
                         <Route path="/checkout/success" element={<CheckoutSuccessPage/>}/>
+                        <Route path="/legal/:slug" element={<LegalDocumentPage/>}/>
 
                         <Route
                             path="/login"
@@ -214,6 +217,7 @@ export default function App() {
 
                 <Footer onOpenFeedback={() => setFeedbackOpen(true)}/>
                 <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)}/>
+                <CookieNotice/>
             </div>
         </BrowserRouter>
     );

@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import {useAuth} from '../store/authContext';
 import styles from '../styles/Auth.module.css';
 
@@ -20,6 +20,7 @@ export default function RegisterPage() {
     const [submittedCode, setSubmittedCode] = useState(false);
     const [resendAt, setResendAt] = useState(0);
     const [nowTs, setNowTs] = useState(Date.now());
+    const [legalAccepted, setLegalAccepted] = useState(false);
 
     const resendLeft = Math.max(0, Math.ceil((resendAt - nowTs) / 1000));
 
@@ -53,8 +54,12 @@ export default function RegisterPage() {
             next.passwordConfirm = 'Пароли не совпадают';
         }
 
+        if (!legalAccepted) {
+            next.legal = 'Подтвердите согласие с документами';
+        }
+
         return next;
-    }, [email, password, passwordConfirm]);
+    }, [email, password, passwordConfirm, legalAccepted]);
 
     const codeErrors = useMemo(() => {
         const next = {};
@@ -202,6 +207,21 @@ export default function RegisterPage() {
                                 </label>
                             </div>
 
+                            <label className={`${styles.legalCheck} ${submittedForm && formErrors.legal ? styles.legalCheckInvalid : ''}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={legalAccepted}
+                                    onChange={(e) => setLegalAccepted(e.target.checked)}
+                                />
+                                <span>
+                                    Я принимаю{' '}
+                                    <Link to="/legal/terms" target="_blank" rel="noreferrer">Пользовательское соглашение</Link>
+                                    {' '}и подтверждаю ознакомление с{' '}
+                                    <Link to="/legal/privacy" target="_blank" rel="noreferrer">Политикой конфиденциальности</Link>.
+                                </span>
+                            </label>
+                            <span className={styles.fieldError}>{submittedForm ? formErrors.legal || '' : ''}</span>
+
                             <button className={styles.btnPrimary} disabled={loading}>
                                 {loading ? 'Отправляем код...' : 'Получить код подтверждения'}
                             </button>
@@ -241,6 +261,11 @@ export default function RegisterPage() {
                             <button className={styles.btnPrimary} disabled={loading}>
                                 {loading ? 'Проверяем...' : 'Подтвердить email и завершить регистрацию'}
                             </button>
+
+                            <p className={styles.legalNote}>
+                                Подтверждая email, вы завершаете регистрацию на условиях{' '}
+                                <Link to="/legal/terms" target="_blank" rel="noreferrer">Пользовательского соглашения</Link>.
+                            </p>
 
                             <div className={styles.linksRow}>
                                 <button type="button" className={styles.link} onClick={onResend} disabled={loading || resendLeft > 0}>

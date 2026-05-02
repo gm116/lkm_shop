@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
+import {Link} from 'react-router-dom';
 import {useAuth} from '../store/authContext';
 import {useNotify} from '../store/notifyContext';
 import styles from '../styles/FeedbackModal.module.css';
@@ -61,6 +62,7 @@ export default function FeedbackModal({open, onClose}) {
     const [saving, setSaving] = useState(false);
     const [sent, setSent] = useState(false);
     const [form, setForm] = useState(EMPTY_FORM);
+    const [legalAccepted, setLegalAccepted] = useState(false);
     const [submitAttempted, setSubmitAttempted] = useState(false);
     const [touched, setTouched] = useState({
         email: false,
@@ -107,6 +109,7 @@ export default function FeedbackModal({open, onClose}) {
         if (!open) return;
         setSubmitAttempted(false);
         setSent(false);
+        setLegalAccepted(false);
         setTouched({
             email: false,
             phone: false,
@@ -156,7 +159,7 @@ export default function FeedbackModal({open, onClose}) {
             message: form.message.trim(),
         };
 
-        if (hasInvalid) {
+        if (hasInvalid || !legalAccepted) {
             return;
         }
 
@@ -329,6 +332,22 @@ export default function FeedbackModal({open, onClose}) {
                             className={fieldClass('message')}
                         />
                     </label>
+
+                    <label className={`${styles.legalCheck} ${submitAttempted && !legalAccepted ? styles.legalCheckInvalid : ''}`}>
+                        <input
+                            type="checkbox"
+                            checked={legalAccepted}
+                            onChange={(e) => setLegalAccepted(e.target.checked)}
+                        />
+                        <span>
+                            Я подтверждаю ознакомление с{' '}
+                            <Link to="/legal/privacy" target="_blank" rel="noreferrer">Политикой конфиденциальности</Link>
+                            {' '}и соглашаюсь на обработку данных для ответа на обращение.
+                        </span>
+                    </label>
+                    {submitAttempted && !legalAccepted ? (
+                        <div className={styles.legalError}>Подтвердите согласие на обработку данных</div>
+                    ) : null}
 
                     <div className={styles.actions}>
                         <button type="button" className={styles.secondaryBtn} onClick={() => onClose?.()} disabled={saving}>

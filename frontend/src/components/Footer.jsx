@@ -9,8 +9,8 @@ export default function Footer({onOpenFeedback}) {
                 <div className={styles.column}>
                     <div className={styles.title}>Покупателям</div>
                     <Link to="/catalog" className={styles.link}>Каталог</Link>
-                    <span className={styles.link}>Доставка и оплата</span>
-                    <span className={styles.link}>Возврат и обмен</span>
+                    <Link to="/legal/delivery-payment" className={styles.link}>Доставка и оплата</Link>
+                    <Link to="/legal/returns" className={styles.link}>Возврат и обмен</Link>
                     <button type="button" className={`${styles.link} ${styles.linkButton}`} onClick={onOpenFeedback}>
                         Обратная связь
                     </button>
@@ -19,8 +19,9 @@ export default function Footer({onOpenFeedback}) {
                 <div className={styles.column}>
                     <div className={styles.title}>Компания</div>
                     <Link to="/" className={styles.link}>О компании</Link>
-                    <span className={styles.link}>Пользовательское соглашение</span>
-                    <span className={styles.link}>Политика конфиденциальности</span>
+                    <Link to="/legal/offer" className={styles.link}>Публичная оферта</Link>
+                    <Link to="/legal/terms" className={styles.link}>Пользовательское соглашение</Link>
+                    <Link to="/legal/privacy" className={styles.link}>Политика конфиденциальности</Link>
                 </div>
 
                 <div className={styles.column}>
@@ -35,9 +36,6 @@ export default function Footer({onOpenFeedback}) {
             <div className={styles.bottom}>
                 <span>
                     © {new Date().getFullYear()} {siteConfig.storeName}. Все права защищены.
-                </span>
-                <span className={styles.disclaimer}>
-                    Учебный проект. Заказы не обрабатываются.
                 </span>
             </div>
         </footer>

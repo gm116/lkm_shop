@@ -260,6 +260,39 @@
     font-weight: 600;
 }
 
+.legalCheck {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: flex-start;
+    gap: 9px;
+    margin: -4px 0 0;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.legalCheck input {
+    width: 16px;
+    height: 16px;
+    margin: 1px 0 0;
+    accent-color: #111827;
+    cursor: pointer;
+}
+
+.legalCheckInvalid {
+    color: #b42318;
+}
+
+.legalCheck a {
+    color: #1f4fbf;
+    text-decoration: none;
+}
+
+.legalCheck a:hover {
+    text-decoration: underline;
+}
+
 .submitBtn {
     height: 44px;
     border: none;

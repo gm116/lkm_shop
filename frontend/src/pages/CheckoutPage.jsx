@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import {FaBoxOpen, FaCity, FaMapMarkerAlt, FaStore, FaTruck} from 'react-icons/fa';
 
 import {useCart} from '../store/cartContext';
@@ -183,6 +183,7 @@ export default function CheckoutPage() {
 
     const [comment, setComment] = useState('');
     const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [legalAccepted, setLegalAccepted] = useState(false);
 
     useEffect(() => {
         if (error) notify.error(error);
@@ -210,8 +211,9 @@ export default function CheckoutPage() {
         if (cartLoading) return false;
         if (cart.length === 0) return false;
         if (initLoading) return false;
+        if (!legalAccepted) return false;
         return Object.keys(fieldErrors).length === 0;
-    }, [isAuthenticated, accessToken, cartLoading, cart.length, initLoading, fieldErrors]);
+    }, [isAuthenticated, accessToken, cartLoading, cart.length, initLoading, legalAccepted, fieldErrors]);
 
     useEffect(() => {
         if (!isAuthenticated || !accessToken) {
@@ -273,6 +275,7 @@ export default function CheckoutPage() {
                 || fieldErrors.customerEmail
                 || fieldErrors.deliveryService
                 || fieldErrors.pvzCity
+                || (!legalAccepted ? 'Подтвердите согласие с офертой и политикой' : '')
                 || 'Проверь обязательные поля';
             setError(firstError);
             notify.warning(firstError);
@@ -570,6 +573,23 @@ export default function CheckoutPage() {
                             </div>
 
                             {error ? <div className={styles.error}>{error}</div> : null}
+
+                            <label className={`${styles.legalCheck} ${submitAttempted && !legalAccepted ? styles.legalCheckInvalid : ''}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={legalAccepted}
+                                    onChange={(e) => setLegalAccepted(e.target.checked)}
+                                />
+                                <span>
+                                    Я принимаю{' '}
+                                    <Link to="/legal/offer" target="_blank" rel="noreferrer">Публичную оферту</Link>
+                                    {' '}и подтверждаю ознакомление с{' '}
+                                    <Link to="/legal/privacy" target="_blank" rel="noreferrer">Политикой конфиденциальности</Link>.
+                                </span>
+                            </label>
+                            {submitAttempted && !legalAccepted ? (
+                                <div className={styles.fieldNote}>Подтвердите согласие с документами</div>
+                            ) : null}
 
                             <button className={styles.submitBtn} type="submit" disabled={loading || !canSubmit}>
                                 {loading ? 'Оформляем заказ...' : 'Перейти к оплате'}
