@@ -106,7 +106,10 @@ class OrderCreateFromCartView(APIView):
 
             CartItem.objects.filter(cart=cart).delete()
 
-        return Response({'order_id': order.id}, status=status.HTTP_201_CREATED)
+        return Response(
+            {'order_id': str(order.public_id), 'display_id': order.order_number},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class MyOrdersView(APIView):
@@ -126,12 +129,12 @@ class MyOrdersView(APIView):
 class OrderDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, order_id: int):
+    def get(self, request, order_id):
         try:
             o = (
                 Order.objects
                 .prefetch_related('items', 'payments')
-                .get(id=order_id, user=request.user)
+                .get(public_id=order_id, user=request.user)
             )
         except Order.DoesNotExist:
             return Response({'detail': 'Заказ не найден'}, status=status.HTTP_404_NOT_FOUND)
@@ -154,14 +157,14 @@ def _as_bool(value, default=True):
 class RepeatOrderView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, order_id: int):
+    def post(self, request, order_id):
         replace_cart = _as_bool(request.data.get('replace'), default=True)
 
         try:
             source_order = (
                 Order.objects
                 .prefetch_related('items')
-                .get(id=order_id, user=request.user)
+                .get(public_id=order_id, user=request.user)
             )
         except Order.DoesNotExist:
             return Response({'detail': 'Заказ не найден'}, status=status.HTTP_404_NOT_FOUND)

@@ -1,3 +1,6 @@
+import uuid
+import secrets
+
 from django.conf import settings
 from django.db import models
 
@@ -15,7 +18,15 @@ class DeliveryType(models.TextChoices):
     COURIER = 'courier', 'Courier'
     PVZ = 'pvz', 'PVZ'
 
+
+def generate_order_number():
+    return str(secrets.randbelow(900_000) + 100_000)
+
+
 class Order(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    order_number = models.CharField(max_length=6, unique=True, editable=False, db_index=True, default=generate_order_number)
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

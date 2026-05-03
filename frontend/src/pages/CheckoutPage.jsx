@@ -345,7 +345,7 @@ export default function CheckoutPage() {
 
             navigate('/checkout/redirect', {
                 replace: true,
-                state: {orderId, confirmationUrl},
+                state: {orderId, displayOrderId: orderData?.display_id || '', confirmationUrl},
             });
         } catch (err) {
             setError(err?.message || 'Ошибка');

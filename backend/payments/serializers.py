@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 class CreatePaymentSerializer(serializers.Serializer):
-    order_id = serializers.IntegerField()
+    order_id = serializers.UUIDField()
 
 class CreatePaymentResponseSerializer(serializers.Serializer):
     confirmation_url = serializers.URLField()

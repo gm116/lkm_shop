@@ -4,6 +4,6 @@ from .views import OrderCreateFromCartView, MyOrdersView, OrderDetailView, Repea
 urlpatterns = [
     path('create-from-cart/', OrderCreateFromCartView.as_view()),
     path('my/', MyOrdersView.as_view()),
-    path('<int:order_id>/repeat/', RepeatOrderView.as_view()),
-    path('<int:order_id>/', OrderDetailView.as_view()),
+    path('<uuid:order_id>/repeat/', RepeatOrderView.as_view()),
+    path('<uuid:order_id>/', OrderDetailView.as_view()),
 ]

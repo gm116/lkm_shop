@@ -45,10 +45,10 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 
 
 def _order_description(order: Order) -> str:
-    return f"Оплата заказа #{order.id}"
+    return f"Оплата заказа {order.order_number}"
 
 
-def _build_return_url(base_url: str, order_id: int) -> str:
+def _build_return_url(base_url: str, order_id: str) -> str:
     try:
         parsed = urlparse(base_url)
         query = dict(parse_qsl(parsed.query, keep_blank_values=True))
@@ -195,7 +195,7 @@ class CreatePaymentView(APIView):
         order_id = ser.validated_data['order_id']
         with transaction.atomic():
             try:
-                order = Order.objects.select_for_update().get(id=order_id)
+                order = Order.objects.select_for_update().get(public_id=order_id)
             except Order.DoesNotExist:
                 return Response({"detail": "Заказ не найден"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -232,7 +232,8 @@ class CreatePaymentView(APIView):
                     {"detail": "Не настроен YOOKASSA_RETURN_URL"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-            return_url = _build_return_url(return_url_base, order.id)
+            order_public_id = str(order.public_id)
+            return_url = _build_return_url(return_url_base, order_public_id)
             receipt_items = [
                 {
                     'description': item.product_name_snapshot,
@@ -252,6 +253,7 @@ class CreatePaymentView(APIView):
             try:
                 r = create_payment_for_order(
                     order_id=order.id,
+                    order_public_id=order_public_id,
                     amount_value=amount,
                     description=_order_description(order),
                     return_url=return_url,
@@ -403,11 +405,11 @@ class YooKassaWebhookView(APIView):
 
         provider_metadata = provider_data.get("metadata") or {}
         provider_order_id = str(provider_metadata.get("order_id") or '').strip()
-        if provider_order_id and provider_order_id != str(p.order_id):
+        if provider_order_id and provider_order_id != str(p.order.public_id):
             logger.warning(
                 "Webhook YooKassa: order_id в metadata не совпал, payment_id=%s, expected_order=%s, got_order=%s",
                 provider_payment_id,
-                p.order_id,
+                p.order.public_id,
                 provider_order_id,
             )
             return Response({"detail": "order_id не совпадает"}, status=status.HTTP_400_BAD_REQUEST)
@@ -459,8 +461,8 @@ class YooKassaWebhookView(APIView):
 class PaymentSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, order_id: int):
-        p = Payment.objects.filter(order_id=order_id).select_related('order').order_by('-created_at').first()
+    def post(self, request, order_id):
+        p = Payment.objects.filter(order__public_id=order_id).select_related('order').order_by('-created_at').first()
         if not p or not p.provider_payment_id:
             return Response({"detail": "Платёж не найден"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -490,4 +492,7 @@ class PaymentSyncView(APIView):
                     str(exc),
                 )
 
-        return Response({"status": p.status}, status=status.HTTP_200_OK)
+        return Response(
+            {"status": p.status, "display_id": p.order.order_number},
+            status=status.HTTP_200_OK,
+        )

@@ -5,7 +5,7 @@ export default function CheckoutRedirectPage() {
     const navigate = useNavigate();
     const {state} = useLocation();
     const confirmationUrl = state?.confirmationUrl;
-    const orderId = state?.orderId;
+    const displayOrderId = state?.displayOrderId || '';
 
     const [seconds, setSeconds] = useState(10);
 
@@ -69,9 +69,11 @@ export default function CheckoutRedirectPage() {
                 Перейти к оплате
             </button>
 
-            <div style={{marginTop: 16, fontSize: 14, opacity: 0.6}}>
-                Заказ №{orderId}
-            </div>
+            {displayOrderId ? (
+                <div style={{marginTop: 16, fontSize: 14, opacity: 0.6}}>
+                    Заказ №{displayOrderId}
+                </div>
+            ) : null}
         </div>
     );
 }

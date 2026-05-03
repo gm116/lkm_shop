@@ -72,6 +72,7 @@ def _build_receipt(*, customer_email: str, items: list[dict]) -> dict:
 def create_payment_for_order(
     *,
     order_id: int,
+    order_public_id: str,
     amount_value: Decimal,
     description: str,
     return_url: str,
@@ -89,7 +90,7 @@ def create_payment_for_order(
         "confirmation": {"type": "redirect", "return_url": return_url},
         "capture": True,
         "description": description,
-        "metadata": {"order_id": str(order_id)},
+        "metadata": {"order_id": str(order_public_id)},
         "receipt": _build_receipt(customer_email=customer_email, items=receipt_items),
     }
 

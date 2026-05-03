@@ -24,6 +24,10 @@ def _status_label(status_key: str) -> str:
     return STATUS_LABELS.get(status_key, status_key or 'Не указан')
 
 
+def _order_number(order: Order) -> str:
+    return order.order_number
+
+
 def _money(value) -> str:
     return f'{value:.2f} ₽'
 
@@ -48,7 +52,7 @@ def _build_paid_email_plain(order: Order) -> str:
     lines = [
         f'Здравствуйте, {order.customer_name or "покупатель"}!',
         '',
-        f'Заказ №{order.id} оплачен. Мы получили оплату и передали заказ в обработку.',
+        f'Заказ №{_order_number(order)} оплачен. Мы получили оплату и передали заказ в обработку.',
         '',
         'Состав заказа:',
     ]
@@ -133,10 +137,12 @@ def _build_paid_email_html(order: Order) -> str:
 
     delivery_html = '<br>'.join(delivery_details)
 
+    order_number = _order_number(order)
+
     return f'''<!doctype html>
 <html>
 <body style="margin:0;padding:0;background:#f5f1ea;font-family:Arial,Helvetica,sans-serif;color:#1d1d1b;">
-    <div style="display:none;max-height:0;overflow:hidden;">Заказ №{order.id} оплачен и передан в обработку.</div>
+    <div style="display:none;max-height:0;overflow:hidden;">Заказ №{order_number} оплачен и передан в обработку.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1ea;padding:28px 12px;">
         <tr>
             <td align="center">
@@ -144,7 +150,7 @@ def _build_paid_email_html(order: Order) -> str:
                     <tr>
                         <td style="padding:28px 32px 20px;background:#1d1d1b;color:#ffffff;">
                             <div style="font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#cdbb9e;">ЛКМ. Интернет-магазин</div>
-                            <div style="margin-top:10px;font-size:28px;line-height:1.2;font-weight:700;">Заказ №{order.id} оплачен</div>
+                            <div style="margin-top:10px;font-size:28px;line-height:1.2;font-weight:700;">Заказ №{order_number} оплачен</div>
                         </td>
                     </tr>
                     <tr>
@@ -191,7 +197,7 @@ def send_order_paid_email(order: Order) -> tuple[bool, str | None]:
     except ValidationError:
         return False, 'email_invalid'
 
-    subject = f'Заказ №{order.id} оплачен'
+    subject = f'Заказ №{_order_number(order)} оплачен'
     text_body = _build_paid_email_plain(order)
     html_body = _build_paid_email_html(order)
 
@@ -228,11 +234,11 @@ def send_order_status_email(order: Order, previous_status: str | None = None) ->
     current_status = _status_label(order.status)
     previous_label = _status_label(previous_status) if previous_status else None
 
-    subject = f'Статус заказа #{order.id} изменен'
+    subject = f'Статус заказа №{_order_number(order)} изменен'
     lines = [
         f'Здравствуйте, {order.customer_name or "покупатель"}!',
         '',
-        f'Статус вашего заказа №{order.id} обновлен.',
+        f'Статус вашего заказа №{_order_number(order)} обновлен.',
     ]
     if previous_label:
         lines.append(f'Было: {previous_label}')

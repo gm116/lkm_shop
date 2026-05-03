@@ -10,6 +10,10 @@ function formatMoney(v) {
     return n.toLocaleString('ru-RU');
 }
 
+function orderDisplayId(order) {
+    return order?.display_id || String(order?.id || '').split('-', 1)[0].toUpperCase();
+}
+
 function statusLabel(status, paymentSucceeded = false) {
     if (!status) return '';
     const map = {
@@ -1066,7 +1070,7 @@ export default function ProfilePage() {
                                             <summary className={styles.orderSummary}>
                                                 <div className={styles.orderSummaryLeft}>
                                                     <div className={styles.orderSummaryTop}>
-                                                        <div className={styles.orderNumber}>Заказ #{o.id}</div>
+                                                        <div className={styles.orderNumber}>Заказ #{orderDisplayId(o)}</div>
                                                         {createdText ? <div className={styles.orderDate}>{createdText}</div> : null}
                                                     </div>
 

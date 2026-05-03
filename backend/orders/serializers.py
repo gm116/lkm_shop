@@ -74,7 +74,9 @@ class OrderItemOutSerializer(serializers.Serializer):
 
 
 class OrderOutSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.CharField()
+    public_id = serializers.CharField()
+    display_id = serializers.CharField()
     status = serializers.CharField()
     payment_succeeded = serializers.BooleanField()
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
@@ -110,6 +112,10 @@ def serialize_order_item(item):
     }
 
 
+def order_public_number(order: Order) -> str:
+    return order.order_number
+
+
 def _payment_succeeded(order: Order) -> bool:
     prefetched = getattr(order, '_prefetched_objects_cache', {}) or {}
     payments = prefetched.get('payments')
@@ -140,12 +146,16 @@ def _active_payment(order: Order):
 
 
 def serialize_order(order: Order, include_customer: bool = False):
-    active_payment = None if _payment_succeeded(order) else _active_payment(order)
+    payment_succeeded = _payment_succeeded(order)
+    active_payment = None if payment_succeeded else _active_payment(order)
+    public_id = str(order.public_id)
 
     payload = {
-        'id': order.id,
+        'id': order.id if include_customer else public_id,
+        'public_id': public_id,
+        'display_id': order_public_number(order),
         'status': order.status,
-        'payment_succeeded': _payment_succeeded(order),
+        'payment_succeeded': payment_succeeded,
         'payment_url': active_payment.confirmation_url if active_payment else '',
         'payment_status': active_payment.status if active_payment else '',
         'total_amount': order.total_amount,

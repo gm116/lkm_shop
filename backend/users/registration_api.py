@@ -210,7 +210,6 @@ class RegistrationConfirmCodeView(APIView):
             {
                 'access': str(refresh.access_token),
                 'user': {
-                    'id': user.id,
                     'username': user.username,
                     'email': user.email,
                 },
