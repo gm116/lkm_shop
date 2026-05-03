@@ -186,7 +186,7 @@ class RefreshView(APIView):
             if new_refresh_token:
                 set_refresh_cookie(response, new_refresh_token)
             return response
-        except InvalidToken:
+        except (InvalidToken, TokenError):
             return Response({'detail': 'Недействительный токен обновления'}, status=status.HTTP_401_UNAUTHORIZED)
 
 

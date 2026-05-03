@@ -1,4 +1,4 @@
-import {createContext, useContext, useEffect, useMemo, useState} from 'react';
+import {createContext, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {
     confirmRegisterUser,
     loginUser,
@@ -95,6 +95,7 @@ export function AuthProvider({children}) {
     const [user, setUser] = useState(null);
     const [permissions, setPermissions] = useState(null);
     const [loading, setLoading] = useState(true);
+    const refreshPromiseRef = useRef(null);
 
     const isAuthenticated = !!accessToken;
 
@@ -141,14 +142,26 @@ export function AuthProvider({children}) {
     };
 
     const ensureFreshAccess = async () => {
-        const r = await refreshAccessToken();
-        if (!r?.access) {
-            await hardLogout();
-            return null;
+        if (refreshPromiseRef.current) {
+            return refreshPromiseRef.current;
         }
 
-        setAccessToken(r.access);
-        return r.access;
+        const refreshTask = (async () => {
+            const r = await refreshAccessToken();
+            if (!r?.access) {
+                await hardLogout();
+                return null;
+            }
+
+            setAccessToken(r.access);
+            return r.access;
+        })();
+
+        refreshPromiseRef.current = refreshTask.finally(() => {
+            refreshPromiseRef.current = null;
+        });
+
+        return refreshPromiseRef.current;
     };
 
     const authFetch = async (url, options = {}) => {

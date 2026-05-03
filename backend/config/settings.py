@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from pathlib import Path
 import os
+import sys
 from decouple import AutoConfig, Config, RepositoryEnv
 from datetime import timedelta
 from urllib.parse import urlparse
@@ -38,6 +39,7 @@ def _append_unique(items: list[str], value: str):
 
 
 logger = logging.getLogger(__name__)
+IS_TEST_RUN = any(arg in {'test', 'pytest'} for arg in sys.argv)
 
 
 def _parse_ip_network_pool(raw_value: str) -> tuple:
@@ -288,3 +290,18 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+if IS_TEST_RUN:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+    }
