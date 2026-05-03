@@ -75,31 +75,34 @@ def _sync_order_canceled(order: Order):
     return cancel_order(order)
 
 
-def _claim_paid_email_order(payment_id):
+def _send_paid_email_once(payment: Payment):
     with transaction.atomic():
-        payment = (
-            Payment.objects
-            .select_for_update()
-            .select_related('order')
-            .prefetch_related('order__items')
-            .get(pk=payment_id)
-        )
+        try:
+            payment = (
+                Payment.objects
+                .select_for_update()
+                .select_related('order')
+                .prefetch_related('order__items')
+                .get(pk=payment.pk)
+            )
+        except Payment.DoesNotExist:
+            return
+
         if payment.paid_email_sent_at is not None:
-            return None
+            return
+
+        ok, reason = send_order_paid_email(payment.order)
+        if not ok:
+            logger.warning(
+                "Письмо об оплате заказа не отправлено, payment_id=%s, order_id=%s, reason=%s",
+                payment.id,
+                payment.order_id,
+                reason or 'unknown',
+            )
+            return
+
         payment.paid_email_sent_at = timezone.now()
         payment.save(update_fields=['paid_email_sent_at', 'updated_at'])
-        return payment.order
-
-
-def _send_paid_email_once(payment: Payment):
-    try:
-        order = _claim_paid_email_order(payment.pk)
-    except Payment.DoesNotExist:
-        return
-    if order is None:
-        return
-    order.refresh_from_db()
-    send_order_paid_email(order)
 
 
 def _rollback_order_on_payment_creation_failure(order: Order):
