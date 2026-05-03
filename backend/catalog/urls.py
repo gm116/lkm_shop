@@ -20,6 +20,7 @@ urlpatterns = [
     path('brands/', BrandListView.as_view()),
     path('products/', ProductListView.as_view()),
     path('products/<int:pk>/', ProductDetailView.as_view()),
+    path('products/<slug:slug>/', ProductDetailView.as_view()),
     path('filters/', CatalogFiltersView.as_view()),
     path('admin/attribute-meta/', AdminProductAttributeMetaView.as_view()),
     path('admin/products/', AdminProductListCreateView.as_view()),

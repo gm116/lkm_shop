@@ -203,7 +203,11 @@ class CreatePaymentView(APIView):
             if hasattr(order, 'user_id') and order.user_id != request.user.id:
                 return Response({"detail": "Недостаточно прав"}, status=status.HTTP_403_FORBIDDEN)
 
-            if Payment.objects.filter(order=order, status=Payment.Status.SUCCEEDED).exists() or getattr(order, 'is_paid', False):
+            if (
+                Payment.objects.filter(order=order, status=Payment.Status.SUCCEEDED).exists()
+                or getattr(order, 'is_paid', False)
+                or getattr(order, 'status', '') == OrderStatus.PAID
+            ):
                 return Response({"detail": "Заказ уже оплачен"}, status=status.HTTP_400_BAD_REQUEST)
 
             if getattr(order, 'status', '') == OrderStatus.CANCELED:
@@ -469,8 +473,26 @@ class PaymentSyncView(APIView):
         if getattr(p.order, 'user_id', None) != request.user.id:
             return Response({"detail": "Недостаточно прав"}, status=status.HTTP_403_FORBIDDEN)
 
-        data = fetch_payment(p.provider_payment_id)
+        try:
+            data = fetch_payment(p.provider_payment_id)
+        except Exception:
+            logger.exception(
+                "Sync YooKassa: ошибка запроса к API для payment_id=%s",
+                p.provider_payment_id,
+            )
+            return Response(
+                {"detail": "Не удалось синхронизировать статус платежа"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         new_status = data.get("status") or p.status
+
+        if new_status not in ALLOWED_YOOKASSA_STATUSES:
+            logger.warning(
+                "Sync YooKassa: API вернул неизвестный статус, payment_id=%s, api_status=%s",
+                p.provider_payment_id,
+                new_status,
+            )
+            return Response({"detail": "Некорректный статус из API"}, status=status.HTTP_400_BAD_REQUEST)
 
         p.status = new_status
         p.raw = data

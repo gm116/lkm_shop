@@ -382,6 +382,94 @@
     font-weight: 600;
 }
 
+.skImage,
+.skLine,
+.skThumb,
+.skButton {
+    position: relative;
+    overflow: hidden;
+    background: #eef3fb;
+    border-radius: 10px;
+}
+
+.skImage::after,
+.skLine::after,
+.skThumb::after,
+.skButton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%);
+    animation: skPulse 1.2s ease-in-out infinite;
+}
+
+.skImage {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+}
+
+.skThumbRow {
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+}
+
+.skThumb {
+    width: 62px;
+    aspect-ratio: 3 / 4;
+    border-radius: 9px;
+}
+
+.skLine {
+    display: block;
+    height: 12px;
+}
+
+.skBread {
+    width: 210px;
+}
+
+.skTitle {
+    width: 62%;
+    height: 18px;
+}
+
+.skMeta {
+    width: 100%;
+    height: 14px;
+    margin-top: 10px;
+}
+
+.skPrice {
+    width: 46%;
+    height: 24px;
+}
+
+.skBadge {
+    width: 42%;
+    height: 28px;
+}
+
+.skButton {
+    width: 190px;
+    height: 46px;
+    border-radius: 12px;
+    margin-top: 4px;
+}
+
+.skText {
+    width: 100%;
+    margin-top: 10px;
+}
+
+@keyframes skPulse {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
 @media (max-width: 1020px) {
     .topLayout {
         flex-direction: column;

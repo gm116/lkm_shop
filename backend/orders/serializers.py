@@ -41,6 +41,21 @@ class OrderCreateFromCartSerializer(serializers.Serializer):
     comment = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
     def validate(self, attrs):
+        customer_name = (attrs.get('customer_name') or '').strip()
+        customer_phone = (attrs.get('customer_phone') or '').strip()
+
+        if not customer_name:
+            raise serializers.ValidationError({'customer_name': 'Укажите имя получателя'})
+
+        phone_digits = ''.join(ch for ch in customer_phone if ch.isdigit())
+        if not phone_digits:
+            raise serializers.ValidationError({'customer_phone': 'Укажите телефон'})
+        if not (len(phone_digits) == 11 and phone_digits.startswith('7')):
+            raise serializers.ValidationError({'customer_phone': 'Неверный формат телефона'})
+
+        attrs['customer_name'] = customer_name
+        attrs['customer_phone'] = customer_phone
+
         delivery_type = attrs.get('delivery_type')
 
         if delivery_type == DeliveryType.COURIER:

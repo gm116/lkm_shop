@@ -71,7 +71,14 @@ def parse_int(value):
 def parse_decimal(raw_value):
     if raw_value in (None, ''):
         return None
-    normalized = str(raw_value).strip().replace(',', '.')
+    normalized = (
+        str(raw_value)
+        .strip()
+        .replace(' ', '')
+        .replace('\xa0', '')
+        .replace('\u202f', '')
+        .replace(',', '.')
+    )
     try:
         return Decimal(normalized)
     except (TypeError, ValueError, InvalidOperation):
@@ -96,7 +103,7 @@ def apply_catalog_filters(qs, request, *, ignore_brand=False, ignore_facets=Fals
 
     search = str(request.query_params.get('search') or '').strip()
     if search:
-        qs = qs.filter(name__icontains=search)
+        qs = qs.filter(Q(name__icontains=search) | Q(sku__icontains=search))
 
     price_min = parse_decimal(request.query_params.get('price_min'))
     price_max = parse_decimal(request.query_params.get('price_max'))
@@ -153,10 +160,18 @@ class ProductListView(APIView):
 
 
 class ProductDetailView(APIView):
-    def get(self, request, pk: int):
-        try:
-            obj = Product.objects.select_related('category', 'brand').prefetch_related('images', 'attributes').get(id=pk, is_active=True)
-        except Product.DoesNotExist:
+    def _find_product(self, identifier):
+        qs = Product.objects.select_related('category', 'brand').prefetch_related('images', 'attributes').filter(is_active=True)
+        if str(identifier).isdigit():
+            obj = qs.filter(id=int(identifier)).first()
+            if obj is not None:
+                return obj
+        return qs.filter(slug=identifier).first()
+
+    def get(self, request, pk: int | None = None, slug: str | None = None):
+        identifier = slug if slug is not None else str(pk)
+        obj = self._find_product(identifier)
+        if obj is None:
             return Response({'detail': 'Товар не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(ProductDetailSerializer(obj).data, status=status.HTTP_200_OK)

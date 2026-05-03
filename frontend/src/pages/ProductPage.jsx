@@ -20,6 +20,7 @@ export default function ProductPage() {
     const [error, setError] = useState('');
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const touchStartX = useRef(null);
+    const initialTitleRef = useRef(typeof document !== 'undefined' ? document.title : '');
 
     useEffect(() => {
         let cancelled = false;
@@ -53,6 +54,27 @@ export default function ProductPage() {
         if (error) notify.error(error);
     }, [error, notify]);
 
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        if (product?.name) {
+            document.title = `${product.name} — Каталог`;
+            return;
+        }
+        if (loading) {
+            document.title = 'Загрузка товара — Каталог';
+            return;
+        }
+        document.title = 'Товар — Каталог';
+    }, [product?.name, loading]);
+
+    useEffect(() => {
+        return () => {
+            if (typeof document !== 'undefined' && initialTitleRef.current) {
+                document.title = initialTitleRef.current;
+            }
+        };
+    }, []);
+
     const galleryImages = useMemo(() => {
         if (!product) return [FALLBACK_IMAGE];
         const prepared = Array.isArray(product.images)
@@ -63,6 +85,10 @@ export default function ProductPage() {
 
     const hasGallery = galleryImages.length > 1;
     const activeImage = galleryImages[Math.min(activeImageIndex, galleryImages.length - 1)] || FALLBACK_IMAGE;
+    const extraCharacteristics = useMemo(() => {
+        const list = Array.isArray(product?.characteristics) ? product.characteristics : [];
+        return list.filter((item) => item?.name && item?.value);
+    }, [product?.characteristics]);
 
     function showPrevImage() {
         setActiveImageIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
@@ -91,7 +117,42 @@ export default function ProductPage() {
     }
 
     if (loading) {
-        return <div className={styles.notFound}>Загрузка товара...</div>;
+        return (
+            <div className={styles.page}>
+                <div className={styles.container}>
+                    <div className={styles.breadcrumbs}>
+                        <span className={`${styles.skLine} ${styles.skBread}`}/>
+                    </div>
+                    <div className={styles.topLayout}>
+                        <section className={styles.galleryCard}>
+                            <div className={styles.skImage}/>
+                            <div className={styles.skThumbRow}>
+                                <span className={styles.skThumb}/>
+                                <span className={styles.skThumb}/>
+                                <span className={styles.skThumb}/>
+                            </div>
+                        </section>
+                        <section className={`${styles.detailsCard} ${styles.specsCard}`}>
+                            <span className={`${styles.skLine} ${styles.skTitle}`}/>
+                            <span className={`${styles.skLine} ${styles.skMeta}`}/>
+                            <span className={`${styles.skLine} ${styles.skMeta}`}/>
+                            <span className={`${styles.skLine} ${styles.skMeta}`}/>
+                        </section>
+                        <aside className={styles.buyCard}>
+                            <span className={`${styles.skLine} ${styles.skTitle}`}/>
+                            <span className={`${styles.skLine} ${styles.skPrice}`}/>
+                            <span className={`${styles.skLine} ${styles.skBadge}`}/>
+                            <span className={styles.skButton}/>
+                        </aside>
+                    </div>
+                    <section className={styles.descriptionCard}>
+                        <span className={`${styles.skLine} ${styles.skTitle}`}/>
+                        <span className={`${styles.skLine} ${styles.skText}`}/>
+                        <span className={`${styles.skLine} ${styles.skText}`}/>
+                    </section>
+                </div>
+            </div>
+        );
     }
 
     if (error || !product) {
@@ -201,6 +262,12 @@ export default function ProductPage() {
                                 <span className={styles.metaLabel}>Артикул</span>
                                 <span className={styles.metaValue}>{product?.sku || '—'}</span>
                             </div>
+                            {extraCharacteristics.map((item, index) => (
+                                <div className={styles.metaRow} key={`${item.name}-${item.value}-${index}`}>
+                                    <span className={styles.metaLabel}>{item.name}</span>
+                                    <span className={styles.metaValue}>{item.value}</span>
+                                </div>
+                            ))}
                         </div>
                     </section>
 

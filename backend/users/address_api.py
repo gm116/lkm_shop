@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 
 from .models import Address
 
@@ -25,18 +26,23 @@ class AddressSerializer:
     def validate(data):
         city = (data.get('city') or '').strip()
         address_line = (data.get('address_line') or '').strip()
+        phone = (data.get('phone') or '').strip()
 
         if not city:
             return None, {'city': ['Обязательное поле']}
         if not address_line:
             return None, {'address_line': ['Обязательное поле']}
+        if phone:
+            digits = ''.join(ch for ch in phone if ch.isdigit())
+            if not (len(digits) == 11 and digits.startswith('7')):
+                return None, {'phone': ['Телефон должен быть в формате +7 (___) ___-__-__']}
 
         return {
             'label': (data.get('label') or '').strip(),
             'city': city,
             'address_line': address_line,
             'recipient_name': (data.get('recipient_name') or '').strip(),
-            'phone': (data.get('phone') or '').strip(),
+            'phone': phone,
             'comment': (data.get('comment') or '').strip(),
             'is_default': bool(data.get('is_default', False)),
         }, None
@@ -67,7 +73,7 @@ class AddressDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, pk):
-        return Address.objects.get(user=request.user, pk=pk)
+        return get_object_or_404(Address, user=request.user, pk=pk)
 
     def patch(self, request, pk):
         addr = self.get_object(request, pk)
@@ -97,7 +103,7 @@ class AddressSetDefaultView(APIView):
 
     def post(self, request, pk):
         with transaction.atomic():
-            addr = Address.objects.get(user=request.user, pk=pk)
+            addr = get_object_or_404(Address, user=request.user, pk=pk)
             Address.objects.filter(user=request.user).update(is_default=False)
             addr.is_default = True
             addr.save(update_fields=['is_default'])
